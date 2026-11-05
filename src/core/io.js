@@ -7,7 +7,7 @@ OP.io = (function () {
 
   function fromJSON(text) {
     var p = JSON.parse(text);
-    if (!p || !Array.isArray(p.tasks) || !Array.isArray(p.resources)) throw new Error('Not an OpenPlan project file.');
+    if (!p || !Array.isArray(p.tasks) || !Array.isArray(p.resources)) throw new Error("無法辨識為 OpenPlan 專案檔案。");
     return M.normalize(p);
   }
 
@@ -21,8 +21,8 @@ OP.io = (function () {
       cfMap[f.id] = same.id;
     });
     var newHol = sub.holidays.filter(function (h) { return p.holidays.indexOf(h) < 0; }).length;
-    if (newHol) warnings.push(newHol + ' holiday' + (newHol > 1 ? 's were' : ' was') + ' not added to this calendar');
-    if (sub.baseline) warnings.push('its baseline was not copied');
+    if (newHol) warnings.push('有 ' + newHol + ' 個假日未加入此行事曆');
+    if (sub.baseline) warnings.push('子專案的基準線需另外設定');
     sub.resources.forEach(function (r) {
       var same = p.resources.filter(function (x) { return x.name && x.name === r.name; })[0];
       if (same) { resMap[r.uid] = same.uid; return; }
@@ -33,7 +33,7 @@ OP.io = (function () {
       p.resources.push(copy);
     });
     copies.forEach(function (c) { c.reportsTo = c.reportsTo != null && resMap[c.reportsTo] ? resMap[c.reportsTo] : null; });
-    var head = M.newTask(p, { name: sub.name || 'Subproject', level: 1, notes: 'Inserted from ' + (sub.name || 'another project') });
+    var head = M.newTask(p, { name: sub.name || "子專案", level: 1, notes: '匯入來源：' + (sub.name || '其他專案') });
     p.tasks.push(head);
     sub.tasks.forEach(function (t) { taskMap[t.uid] = p.nextUid++; });
     sub.tasks.forEach(function (t) {
@@ -55,13 +55,13 @@ OP.io = (function () {
   // The task table shared by the CSV and Excel exports: a header row, then one row per task.
   function taskTable(p) {
     var s = OP.schedule(p), idx = M.indexByUid(p);
-    var head = ['ID', 'WBS', 'Task Name', 'Level', 'Duration (days)', 'Start', 'Finish', 'Predecessors', 'Resources',
-      'Work (h)', 'Cost', 'ES', 'EF', 'LS', 'LF', 'Total Slack', 'Critical', '% Complete'];
+    var head = ['ID', "工作分解（WBS）", "任務名稱", '層級', "工期（天）", "開始", "完成", "前置任務", "資源",
+      "工時（小時）", '成本', 'ES', 'EF', 'LS', 'LF', "總浮時", "關鍵路徑", "完成率"];
     var lines = [head];
     s.rows.forEach(function (r) {
       lines.push([r.id, r.wbs, r.task.name, r.task.level, r.duration, U.iso(r.startDn), U.iso(r.finishDn),
         M.formatPreds(p, r.task, idx), r.names, Math.round(r.work * 10) / 10, Math.round(r.cost),
-        r.es, r.ef, r.ls, r.lf, r.slack, r.critical ? 'Yes' : 'No', r.task.percent || 0]);
+        r.es, r.ef, r.ls, r.lf, r.slack, r.critical ? "是" : "否", r.task.percent || 0]);
     });
     return lines;
   }
@@ -110,10 +110,10 @@ OP.io = (function () {
       ctx.drawImage(img, 0, 0, w, h);
       c.toBlob(function (b) {
         if (b) U.download(name + '.png', b);
-        else OP.notify('The chart is too large for a PNG. Try the SVG export instead.');
+        else OP.notify("圖表尺寸超過 PNG 上限，可改為匯出 SVG。");
       }, 'image/png');
     };
-    img.onerror = function () { OP.notify('Could not create the image. Try the SVG export instead.'); };
+    img.onerror = function () { OP.notify("無法產生圖片，可改為匯出 SVG。"); };
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(standaloneSVG(svg));
   }
 

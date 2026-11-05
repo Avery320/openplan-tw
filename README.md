@@ -1,197 +1,135 @@
-<div align="center">
+# OpenPlan 台灣版
 
-<img src="public/assets/OpenPlan.png" alt="OpenPlan" height="64">
+以 [OpenPlan](https://github.com/MNSBaanu/OpenPlan) 的 `147c88b` 版本為基礎，使用台灣繁體中文。編輯器沿用原有的排程引擎與資料格式。Sites 提供登入與網站部署，D1 保存各帳號的專案與具名版本。
 
-**A free project planner that runs in the browser.**
+Run `npm test` for the upstream scheduling and file-format checks. The hosting instructions below describe the Sites Vinext runtime.
 
-Build a WBS, a Gantt chart, a critical-path network diagram, a resource plan and a budget without a paid licence.
+## Prerequisites
 
-![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-6-646cff?logo=vite&logoColor=white)
+- Node.js `>=22.13.0`
+- Portable: Windows, macOS, or Linux; no Bash required
+- Managed Linux: managed Linux runtime with Bash, `flock`, `curl`, `sha256sum`, and GNU `timeout`
+- Git and `tar` (including Windows `tar.exe`) are required for publishing; portable publication does not require Bash
 
-</div>
+## Sites Lifecycle
 
----
+The Sites initializer copies the shared starter and selects managed-linux only when `SITES_MANAGED_LINUX_CONTAINER=1`; otherwise it selects portable. It saves the selection only in ignored `.sites-runtime/execution-profile.json`. Both profiles copy/configure first, then use the plugin's separate `install-dependencies.mjs` step to measure installation independently. Edit source under `app/` and follow the Sites skill for installation, preview, builds, and publishing.
 
-## Table of contents
+Run `node <plugin-root>/scripts/configure-execution-profile.mjs` only when the profile is unknown for the current checkout and environment. Profile changes do not alter tracked source or require reinstalling otherwise-valid dependencies; restart an existing preview to use the new selection. Do not commit or upload `.sites-runtime/`.
 
-- [About](#about)
-- [Features](#features)
-- [Tech stack](#tech-stack)
-- [Getting started](#getting-started)
-- [Usage](#usage)
-- [Project structure](#project-structure)
-- [Contributing](#contributing)
-- [Author](#author)
-- [License](#license)
+This starter does not use `wrangler.jsonc`.
 
-## About
+Publish archives outside the source checkout or under its ignored `outputs/` directory. Local `.env*`, `.dev.vars*`, TypeScript build state, and tool runtime directories are ignored; keep the hosting manifest, migrations, and authored scripts in source control.
 
-OpenPlan is a project management tool for students and small teams who need to plan a project with the standard techniques (WBS, Gantt chart, critical path method, resource allocation and budgeting) but don't have access to paid desktop software.
+`install:ci` runs `npm ci` once against the shared lockfile, disables parent-workspace discovery, and includes required dev/optional dependencies despite production/omit settings. Sharp defaults to prebuilt binaries unless explicitly configured otherwise. Do not overlap installers.
 
-It runs entirely in the browser and has no server or account. Projects are saved on your own computer.
+- **Portable:** Preserve host HOME, npm cache, registry, proxy, temporary paths, retry/concurrency settings, and lifecycle-script policy. Use `--prefer-offline --no-audit --no-fund`.
+- **Managed Linux:** Use the existing project-local HOME/cache/tmp setup and Linux install lock, tarball preflight, and timeout. Restore the image-seeded npm cache only when its lockfile hash matches; retain network fallback. Builds keep their existing timeout. These helpers are not invoked by the portable profile.
 
-## Features
+`scripts/sites-env.mjs` preserves the caller's HOME, npm cache, proxy, XDG, and temporary-directory configuration while defaulting Wrangler and Miniflare state to the checkout. If npm reports an unwritable cache, select a writable path with `npm_config_cache` for that install. The `dev` and `start` scripts also keep Wrangler logs inside the checkout. Generated `.sites-runtime/` and `.wrangler/` directories are disposable and ignored by Git.
 
-- **Gantt chart**: an outline of summary tasks and subtasks, FS/SS/FF/SF links with lag, milestones, constraints, deadlines, split tasks and a timeline strip. You can drag bars to move tasks, resize them or link them.
-- **Critical path**: forward and backward passes that give ES, EF, LS, LF, total slack and free slack.
-- **Diagrams**: a network diagram (activity on node), a WBS chart and a team org chart. Each one exports to PNG or SVG.
-- **Resources**: work, material and cost resources, calendars, vacations, rate changes, a workload heatmap and resource leveling.
-- **Tracking**: baselines, % complete, actual dates, a status date and earned value (SPI, CPI, EAC).
-- **Budget and reports**: cost by work package and by resource, monthly and cumulative cost, and 10 ready-made reports.
-- **Task board**: a Not started / In progress / Done board; dragging a card updates its % complete.
-- **Getting started**: templates (final-year project, software sprint, event, research project) and a first-run checklist.
-- **Files**: save to `.openplan` files, open them by double-clicking once the app is installed, import task lists from Excel or CSV, and export Excel (.xlsx) and CSV.
-- **Sharing and versions**: share a copy of a plan as a link (the plan travels inside the link, nothing is uploaded), and save named versions in the browser.
-- **Offline**: once installed or visited, the app works without an internet connection.
-- **Interface**: a tabbed toolbar that you can hide, keyboard shortcuts, undo and redo, and light and dark themes.
+On portable, `npm run dev` uses `vinext dev` with HMR, starting at port 5173. Vinext records the running server in ignored `.vinext/` state, rejects an ordinary duplicate launch, and recovers stale state after a stopped process; exactly simultaneous starts can race. Pass `--port <port>` or `--hostname <host>` after `npm run dev --` when needed; keep portable previews on loopback.
 
-## Tech stack
+For managed Linux browser QA, follow the Sites skill's managed preview reference. The daemon runs the project's Vite dev script with `--host 0.0.0.0 --port 4173 --strictPort`; use the CLI's returned URL. The ignored local profile survives the daemon's cleared environment.
 
-| Layer | Technology |
-|---|---|
-| UI | React 19, TypeScript 6 |
-| State | Zustand 5 |
-| Build | Vite 8 |
-| Tests and lint | Vitest, ESLint |
-| Scheduling and charts | Plain JavaScript modules rendering SVG (`src/core/`) |
-| Storage | Browser localStorage, and the File System Access API for project files |
+The portable profile simulates ChatGPT sign-in only for loopback development requests. Visit `/signin-with-chatgpt?return_to=/` to sign in as `local_seedy` (`seedy@sites.test`, display name `Seedy`) and `/signout-with-chatgpt?return_to=/` to sign out. The development cookie preserves that identity across server restarts. Mock auth is disabled in the managed-linux profile and is not included in production builds; hosted authentication remains dispatch-owned.
 
-## Getting started
+The Worker uses `vinext/server/fetch-handler`, including Vinext's config-aware image handling. After building, `npm start` runs that Worker locally through Wrangler on `127.0.0.1`, sharing `.wrangler/state` with dev preview and local D1 migrations; it does not deploy the site or simulate sign-in. Use the URL printed by the server. Pass `npm start -- --port <port>` to select a different built-preview port.
 
-### Prerequisites
+Local previews use Miniflare's placeholder `Request.cf` metadata without a network lookup. Set `CLOUDFLARE_CF_FETCH_ENABLED=true` to opt into fetching preview metadata; this setting does not change hosted request metadata.
 
-- [Node.js](https://nodejs.org) 18 or later
+Local tool usage metrics are disabled by default. Set `WRANGLER_SEND_METRICS=true` to opt in.
 
-### Installation
+## Included Shape
 
-```bash
-git clone https://github.com/MNSBaanu/OpenPlan.git
-cd OpenPlan
-npm install
+- edit site code under `app/`
+- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
+- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
+- `vite.config.ts` simulates declared bindings for local development
+- `worker/index.ts` is the production Worker entrypoint and preserves request-scoped connector bindings
+- `scripts/vite/` contains the maintained Vite integrations and the vendored Sites plugin license
+- `scripts/connector-preview/` contains the local connector preview Worker and session helpers
+- the remaining `scripts/` files select execution profiles and run installation, development, and builds; the plugin's helpers orchestrate the Sites lifecycle
+- `dist/` contains generated deployment output; `.vinext/`, `.wrangler/`, and `.sites-runtime/` contain ignored local tool state
+- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
+- `db/schema.ts` starts intentionally empty
+- `@cloudflare/workers-types` provides Worker types; `cloudflare-env.d.ts` declares optional `DB`/`BUCKET` bindings—update these declarations if binding names change
+- `examples/d1/` contains an optional D1 example surface
+- `drizzle.config.ts` supports local migration generation when needed
+
+## Workspace Auth Headers
+
+Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
+
+The user ID is stable for the same user on the same Site and different across Sites. Use it as the durable user key; use email and name for display or contact purposes.
+
+SIWC-authenticated workspace sites may also receive `oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty `name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by `oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+
+Treat the full name as optional and fall back to email when it is absent:
+
+```tsx
+import { headers } from "next/headers";
+
+export default async function Home() {
+  const requestHeaders = await headers();
+  const userId = requestHeaders.get("oai-authenticated-user-id");
+  const email = requestHeaders.get("oai-authenticated-user-email");
+  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
+  const fullName =
+    encodedFullName &&
+    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
+      "percent-encoded-utf-8"
+      ? decodeURIComponent(encodedFullName)
+      : null;
+
+  const displayName = fullName ?? email;
+  // ...
+}
 ```
 
-### Run in development
+## Optional Dispatch-Owned ChatGPT Sign-In
 
-```bash
-npm run dev        # http://localhost:5173
+Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs optional or required ChatGPT sign-in:
+
+- Use `getChatGPTUser()` for optional signed-in UI.
+- Use the returned `userId` as the stable user key for user-owned records; do not use email as a durable identifier.
+- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send anonymous visitors through Sign in with ChatGPT.
+- In a Server Component, start sign-in with `<a href={chatGPTSignInPath(returnTo)} target="_top">`. The auth helper module is server-only; do not import it into a Client Component.
+- Do not use `fetch`, XHR, a client-side router, or a framework link that can prefetch the sign-in route. SIWC must start as a top-level navigation.
+- Never request the AuthAPI authorization endpoint directly. The dispatch-owned `/signin-with-chatgpt` route must start the SIWC flow.
+- Use `chatGPTSignOutPath(returnTo)` for browser sign-out links or actions.
+- Pass a same-origin relative `returnTo` path for the destination after sign-in or sign-out. The helper validates and safely encodes it.
+- Mark protected pages with `export const dynamic = "force-dynamic"` because they depend on per-request identity headers.
+
+Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the OAuth cookies, and identity header injection. Do not implement app routes for those reserved paths. Routes that do not import and call the helper remain anonymous-compatible.
+
+SIWC establishes identity only; it does not prove workspace membership. Use the Sites hosting platform's access policy controls for workspace-wide restrictions, or enforce explicit server-side membership or allowlist checks.
+
+Use SIWC for account pages, user-specific dashboards, saved records, and write actions tied to the current ChatGPT user. Leave public content anonymous.
+
+## Local D1 migrations
+
+For a D1-backed local preview, generate SQL with `npm run db:generate`. Build once through the Sites skill's build entrypoint (or `npm run build` for standalone use) to generate `dist/server/wrangler.json`, rebuilding if bindings change. From the project root, apply each pending migration in order:
+
+```sh
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_example.sql
 ```
 
-### Build for production
+Replace the filename with the pending migration and `DB` with your D1 binding name if different. Use `.wrangler/state`, not `.wrangler/state/v3`; Wrangler adds the versioned directories. Do not replay migrations already applied locally. This updates only the preview database; publishing applies production migrations separately.
 
-```bash
-npm run build      # outputs to dist/
-npm run lint       # ESLint
-npm test           # Vitest
-npm run preview    # serves dist/ at http://localhost:4173
-```
+## Diagnostic Commands
 
-### Deployment
+- `npm run install:ci`: perform the one locked dependency install
+- `npm run dev`: start the Vite/Vinext development server
+- `npm run build`: build the deployable Sites artifact
+- `npm run start`: preview the built Worker locally with D1/R2 support
+- `npm run db:generate`: generate Drizzle migrations after schema changes
 
-`dist/` uses relative paths, so it can be hosted on any static host, such as GitHub Pages or Netlify. Opening `dist/index.html` directly from disk does not work in most browsers.
+When using the Sites plugin, follow its skill instructions for installation, builds, and publishing. These npm commands remain available for standalone use.
 
-#### Vercel (automatic)
+The portable build runs Vinext directly without a host `timeout` command. The managed-linux build uses `scripts/build-verified.sh` and its existing `SITES_BUILD_TIMEOUT` setting.
 
-`.github/workflows/vercel.yml` deploys to [Vercel](https://vercel.com). Every push to `main` goes to production, and every pull request gets a preview URL.
+## Learn More
 
-One-time setup:
-
-1. Create the Vercel project. Either import the repository at vercel.com/new, or run `npx vercel link` in the project folder.
-2. Create a token at **vercel.com › Account Settings › Tokens**.
-3. Find the IDs in `.vercel/project.json` (created by `vercel link`), or under **Project › Settings › General**.
-4. In GitHub, go to **Settings › Secrets and variables › Actions** and add three repository secrets:
-   - `VERCEL_TOKEN`: the token
-   - `VERCEL_ORG_ID`: the `orgId`
-   - `VERCEL_PROJECT_ID`: the `projectId`
-
-If you imported the repository into Vercel, turn off Vercel's own Git deployments (**Project › Settings › Git**) so each push deploys only once.
-
-### Visitor counts
-
-OpenPlan counts visitors with [GoatCounter](https://www.goatcounter.com), a free analytics service that uses no cookies. The script tag is in `index.html`. It counts visits to the landing page (`/`) and to the app (`/app`) separately. Project data is never sent.
-
-To use your own GoatCounter account, change `mnsbaanu` in the `data-goatcounter` address in `index.html` to your site code. GoatCounter ignores visits from `localhost`, so only the deployed site is counted.
-
-## Usage
-
-### Saving your work
-
-- **Autosave**: every change is saved in the browser's localStorage. That copy exists only in the browser and computer you are using, and clearing your browser data deletes it.
-- **Save** (Ctrl+S) writes an `.openplan` file. In Chrome and Edge, the first save asks where to put the file, and later saves write back to that same file. **Save As** makes a copy. Other browsers download the file instead.
-- **Open** loads an `.openplan` file or an older `.json` project file.
-
-Keep a project file for anything important.
-
-### Opening files by double-clicking
-
-In Chrome or Edge, install OpenPlan as an app. After that, double-clicking an `.openplan` file opens it in OpenPlan.
-
-1. Open OpenPlan from an HTTPS address or from `localhost`.
-2. Click the **Install** icon in the address bar, or choose **Cast, save and share › Install page as app** from the browser menu.
-3. Double-click an `.openplan` file. The first time, choose **Allow** when the browser asks whether OpenPlan may open this file type.
-
-### Toolbar
-
-- The **Task**, **Resource**, **Report**, **Project** and **View** tabs each show a set of commands. **Format** appears when the Gantt chart is open.
-- **File** opens the menu for new, open, save, export and print.
-- **Hide toolbar** (or Ctrl+F1, or double-clicking a tab) collapses the toolbar to its tabs. While it is hidden, clicking a tab shows the commands over your work.
-
-### Import and export
-
-| Format | Support |
-|---|---|
-| Excel (.xlsx) | Export the task list with real dates |
-| Excel / CSV | Import a task list: paste from a spreadsheet or choose a CSV file (File › Open) |
-| CSV | Export the task list |
-| Share link | A copy of the plan inside a link (File › Save, or the link button in the title bar) |
-| PNG / SVG / PDF | Chart images, printing to PDF, and all 10 reports at once (Reports › Print all reports) |
-
-### Keyboard shortcuts
-
-| Keys | Action |
-|---|---|
-| Ctrl+S | Save |
-| Ctrl+Z / Ctrl+Y | Undo / redo |
-| Ctrl+F1 | Hide or show the toolbar |
-| Alt+Shift+→ / ← | Indent or outdent the selected tasks |
-| Insert | Insert a task |
-| Delete | Delete the selected tasks |
-| ↑ / ↓ | Move between rows while editing |
-
-## Project structure
-
-```
-OpenPlan/
-├── public/
-│   ├── assets/              logo, favicon and app icons
-│   ├── manifest.webmanifest app install and .openplan file handling
-│   ├── sw.js                offline support
-│   └── count.js             GoatCounter visit counter (self-hosted)
-├── src/
-│   ├── core/                scheduling engine, file formats and CSV export, SVG charts, sample project
-│   ├── components/          toolbar, title and status bars, File menu, dialogs, task details panel
-│   ├── views/               Gantt, task board, diagrams, resource sheet, workload, budget, reports, landing page
-│   ├── lib/                 task commands, grid columns and filters, file actions, templates, import,
-│   │                        share links, versions, Excel writer, undo history (with tests)
-│   ├── store.ts             app state, undo/redo, autosave
-│   ├── App.tsx              layout and keyboard shortcuts
-│   └── main.tsx             entry point
-├── index.html
-├── package.json
-└── vite.config.ts
-```
-
-## Contributing
-
-1. Fork the repository and create a branch: `git checkout -b feature/my-change`
-2. Make your changes and check that `npm run lint`, `npm test` and `npm run build` pass.
-3. Commit, push, and open a pull request.
-
-## Author
-
-OpenPlan is made by [MNS Baanu](https://github.com/MNSBaanu).
-
-## License
-
-OpenPlan is released under the [MIT License](LICENSE).
+- [vinext Documentation](https://github.com/cloudflare/vinext)
+- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)

@@ -26,51 +26,51 @@ const signedDays = (v: number) => (v == null ? '' : (v > 0 ? '+' : '') + U.num(v
 export const COLS: Record<string, Col> = {
   id: { t: 'ID', w: 44, fixed: true },
   ind: { t: '', w: 56, fixed: true },
-  name: { t: 'Task Name', w: 280, fixed: true },
-  wbs: { t: 'WBS', w: 64, get: r => r.wbs },
-  duration: { t: 'Duration', w: 76, edit: 'duration', get: r => M.fmtDuration(r.duration), sumRo: true },
-  work: { t: 'Work', w: 80, edit: 'work', num: true, get: r => U.num(r.work) + 'h', sumRo: true },
-  start: { t: 'Start', w: 88, get: r => U.fmt(r.startDn) },
-  finish: { t: 'Finish', w: 88, get: r => U.fmt(r.finishDn) },
-  preds: { t: 'Predecessors', w: 110, edit: 'preds' },
-  res: { t: 'Resources', w: 170 },
-  cost: { t: 'Cost', w: 110, num: true, get: r => U.money(r.cost) },
-  fixedCost: { t: 'Fixed cost', w: 96, num: true, edit: 'number', field: 'fixedCost', get: r => String(r.task.fixedCost || 0) },
-  percent: { t: '% Complete', w: 90, num: true, edit: 'percent', get: r => r.percent + '%', sumRo: true },
-  actualStart: { t: 'Actual start', w: 130, edit: 'date', field: 'actualStart', sumRo: true },
-  actualFinish: { t: 'Actual finish', w: 130, edit: 'date', field: 'actualFinish', sumRo: true },
-  constraint: { t: 'Constraint', w: 170, edit: 'select', field: 'constraint', options: M.CONSTRAINTS, sumRo: true },
-  constraintDate: { t: 'Constraint date', w: 130, edit: 'date', field: 'constraintDate', sumRo: true },
-  deadline: { t: 'Deadline', w: 130, edit: 'date', field: 'deadline', sumRo: true },
-  type: { t: 'Task type', w: 130, edit: 'select', field: 'type', options: M.TASK_TYPES, sumRo: true },
-  priority: { t: 'Priority', w: 74, num: true, edit: 'number', field: 'priority', get: r => String(r.task.priority) },
-  slack: { t: 'Total slack', w: 86, num: true, get: r => U.num(r.slack) + 'd' },
-  freeSlack: { t: 'Free slack', w: 80, num: true, get: r => (r.summary ? '' : U.num(r.freeSlack) + 'd') },
+  name: { t: "任務名稱", w: 280, fixed: true },
+  wbs: { t: "工作分解（WBS）", w: 64, get: r => r.wbs },
+  duration: { t: "工期", w: 76, edit: 'duration', get: r => M.fmtDuration(r.duration), sumRo: true },
+  work: { t: '工時', w: 80, edit: 'work', num: true, get: r => U.num(r.work) + 'h', sumRo: true },
+  start: { t: "開始", w: 88, get: r => U.fmt(r.startDn) },
+  finish: { t: "完成", w: 88, get: r => U.fmt(r.finishDn) },
+  preds: { t: "前置任務", w: 110, edit: 'preds' },
+  res: { t: "資源", w: 170 },
+  cost: { t: '成本', w: 110, num: true, get: r => U.money(r.cost) },
+  fixedCost: { t: "固定成本", w: 96, num: true, edit: 'number', field: 'fixedCost', get: r => String(r.task.fixedCost || 0) },
+  percent: { t: "完成率", w: 90, num: true, edit: 'percent', get: r => r.percent + '%', sumRo: true },
+  actualStart: { t: "實際開始", w: 130, edit: 'date', field: 'actualStart', sumRo: true },
+  actualFinish: { t: "實際完成", w: 130, edit: 'date', field: 'actualFinish', sumRo: true },
+  constraint: { t: "限制條件", w: 170, edit: 'select', field: 'constraint', options: M.CONSTRAINTS, sumRo: true },
+  constraintDate: { t: "限制日期", w: 130, edit: 'date', field: 'constraintDate', sumRo: true },
+  deadline: { t: "期限", w: 130, edit: 'date', field: 'deadline', sumRo: true },
+  type: { t: "任務類型", w: 130, edit: 'select', field: 'type', options: M.TASK_TYPES, sumRo: true },
+  priority: { t: "優先順序", w: 74, num: true, edit: 'number', field: 'priority', get: r => String(r.task.priority) },
+  slack: { t: "總浮時", w: 86, num: true, get: r => U.num(r.slack) + 'd' },
+  freeSlack: { t: "自由浮時", w: 80, num: true, get: r => (r.summary ? '' : U.num(r.freeSlack) + 'd') },
   es: { t: 'ES', w: 56, num: true, get: r => dayNum(r.es) },
   ef: { t: 'EF', w: 56, num: true, get: r => dayNum(r.ef) },
   ls: { t: 'LS', w: 56, num: true, get: r => dayNum(r.ls) },
   lf: { t: 'LF', w: 56, num: true, get: r => dayNum(r.lf) },
-  bStart: { t: 'Baseline start', w: 104, get: r => (r.base ? U.fmt(r.base.startDn) : '') },
-  bFinish: { t: 'Baseline finish', w: 104, get: r => (r.base ? U.fmt(r.base.finishDn) : '') },
-  bCost: { t: 'Baseline cost', w: 110, num: true, get: r => (r.base ? U.money(r.base.cost) : '') },
-  startVar: { t: 'Start var.', w: 80, num: true, get: r => (r.base ? signedDays(r.startVar) : '') },
-  finishVar: { t: 'Finish var.', w: 80, num: true, get: r => (r.base ? signedDays(r.finishVar) : '') },
-  costVar: { t: 'Cost var.', w: 100, num: true, get: r => (r.base ? U.money(r.costVar) : '') },
-  actualCost: { t: 'Actual cost', w: 104, num: true, get: r => money(r.actualCost) },
+  bStart: { t: "基準開始日期", w: 104, get: r => (r.base ? U.fmt(r.base.startDn) : '') },
+  bFinish: { t: "基準完成日期", w: 104, get: r => (r.base ? U.fmt(r.base.finishDn) : '') },
+  bCost: { t: "基準成本", w: 110, num: true, get: r => (r.base ? U.money(r.base.cost) : '') },
+  startVar: { t: "開始日期差異", w: 80, num: true, get: r => (r.base ? signedDays(r.startVar) : '') },
+  finishVar: { t: "完成日期差異", w: 80, num: true, get: r => (r.base ? signedDays(r.finishVar) : '') },
+  costVar: { t: "成本差異", w: 100, num: true, get: r => (r.base ? U.money(r.costVar) : '') },
+  actualCost: { t: "實際成本", w: 104, num: true, get: r => money(r.actualCost) },
   bcws: { t: 'BCWS (PV)', w: 104, num: true, get: r => money(r.bcws) },
   bcwp: { t: 'BCWP (EV)', w: 104, num: true, get: r => money(r.bcwp) },
   acwp: { t: 'ACWP (AC)', w: 104, num: true, get: r => money(r.acwp) },
   sv: { t: 'SV', w: 96, num: true, get: r => money(r.bcwp - r.bcws) },
   cv: { t: 'CV', w: 96, num: true, get: r => money(r.bcwp - r.acwp) },
-  levelDelay: { t: 'Leveling delay', w: 100, num: true, get: r => (r.task.levelDelay ? U.num(r.task.levelDelay) + 'd' : '') },
-  notes: { t: 'Notes', w: 200, edit: 'text', field: 'notes' }
+  levelDelay: { t: "資源平衡造成的延遲", w: 100, num: true, get: r => (r.task.levelDelay ? U.num(r.task.levelDelay) + 'd' : '') },
+  notes: { t: "備註", w: 200, edit: 'text', field: 'notes' }
 };
 
 export const COL_GROUPS: [string, string[]][] = [
   ['General', ['wbs', 'duration', 'work', 'start', 'finish', 'preds', 'res', 'cost', 'fixedCost', 'priority', 'type', 'notes']],
-  ['Schedule', ['constraint', 'constraintDate', 'deadline', 'slack', 'freeSlack', 'es', 'ef', 'ls', 'lf', 'levelDelay']],
+  ["排程", ['constraint', 'constraintDate', 'deadline', 'slack', 'freeSlack', 'es', 'ef', 'ls', 'lf', 'levelDelay']],
   ['Tracking', ['percent', 'actualStart', 'actualFinish', 'actualCost', 'bStart', 'bFinish', 'bCost', 'startVar', 'finishVar', 'costVar']],
-  ['Earned value', ['bcws', 'bcwp', 'acwp', 'sv', 'cv']]
+  ["實獲值", ['bcws', 'bcwp', 'acwp', 'sv', 'cv']]
 ];
 const COL_ORDER = ['id', 'ind', 'name'].concat(COL_GROUPS.flatMap(g => g[1]));
 
@@ -100,16 +100,16 @@ export function toggleCol(cols: string[], k: string, on: boolean): string[] {
 /* ---------- filter, group, sort ---------- */
 
 export const FILTERS: Record<string, string> = {
-  all: 'All tasks', critical: 'Critical tasks', milestones: 'Milestones', summary: 'Summary tasks',
-  incomplete: 'Incomplete tasks', complete: 'Completed tasks', late: 'Behind schedule', slipped: 'Slipped vs baseline',
-  overalloc: 'Overallocated resources', deadline: 'Missed deadlines', conflicts: 'Constraint conflicts'
+  all: "所有任務", critical: "關鍵任務", milestones: "里程碑", summary: "摘要任務",
+  incomplete: "未完成的任務", complete: "已完成的任務", late: "進度落後", slipped: "較基準線延後",
+  overalloc: "資源超額分配", deadline: "已逾期", conflicts: "限制條件衝突"
 };
-export const GROUPS: Record<string, string> = { none: 'No grouping', critical: 'Critical', milestone: 'Milestone', status: 'Progress status', resource: 'Resource', priority: 'Priority', type: 'Task type' };
-export const SORTS: Record<string, string> = { id: 'ID', start: 'Start date', finish: 'Finish date', duration: 'Duration', name: 'Name', cost: 'Cost', priority: 'Priority', slack: 'Total slack' };
+export const GROUPS: Record<string, string> = { none: "不分組", critical: "關鍵路徑", milestone: "里程碑", status: "進度狀態", resource: "資源", priority: "優先順序", type: "任務類型" };
+export const SORTS: Record<string, string> = { id: 'ID', start: "開始日期", finish: "完成日期", duration: "工期", name: "名稱", cost: '成本', priority: "優先順序", slack: "總浮時" };
 
 export function menuData(st: Store) {
   const filters: Record<string, string> = { ...FILTERS };
-  st.p.resources.forEach(r => { filters['res:' + r.uid] = 'Using ' + (r.name || '(unnamed)'); });
+  st.p.resources.forEach(r => { filters['res:' + r.uid] = '使用 ' + (r.name || "（未命名）"); });
   const groups: Record<string, string> = { ...GROUPS };
   st.p.customFields.forEach(cf => { groups['cf:' + cf.id] = cf.name; });
   return { filters, groups, sorts: SORTS };
@@ -149,18 +149,18 @@ function sortKey(st: Store, r: Row): number | string {
 
 function groupKeys(st: Store, r: Row): string[] {
   const g = st.group, t = r.task;
-  if (g === 'critical') return [r.critical ? 'Critical' : 'Not critical'];
-  if (g === 'milestone') return [r.milestone ? 'Milestones' : 'Tasks'];
-  if (g === 'status') return [r.percent >= 100 ? 'Complete' : r.percent > 0 ? 'In progress' : 'Not started'];
-  if (g === 'priority') return ['Priority ' + t.priority];
+  if (g === 'critical') return [r.critical ? "關鍵路徑" : "非關鍵路徑"];
+  if (g === 'milestone') return [r.milestone ? "里程碑" : "任務"];
+  if (g === 'status') return [r.percent >= 100 ? "完成" : r.percent > 0 ? "進行中" : "尚未開始"];
+  if (g === 'priority') return ['優先順序 ' + t.priority];
   if (g === 'type') return [M.TASK_TYPES[t.type] || t.type];
   if (g === 'resource') {
-    const names = t.assignments.map((a: any) => { const res = st.p.resources.find(x => x.uid === a.res); return res ? res.name || '(unnamed)' : null; }).filter((n): n is string => !!n);
-    return names.length ? names : ['Unassigned'];
+    const names = t.assignments.map((a: any) => { const res = st.p.resources.find(x => x.uid === a.res); return res ? res.name || "（未命名）" : null; }).filter((n): n is string => !!n);
+    return names.length ? names : ["未指派"];
   }
   const m = /^cf:(.+)$/.exec(g);
-  if (m) { const v = t.custom && t.custom[m[1]]; return [v === '' || v == null ? '(blank)' : String(v)]; }
-  return ['All'];
+  if (m) { const v = t.custom && t.custom[m[1]]; return [v === '' || v == null ? '（空白）' : String(v)]; }
+  return ['全部'];
 }
 
 export interface GroupItem { group: true; key: string; label: string; count: number; cost: number; startDn: number; finishDn: number }

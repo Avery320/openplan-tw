@@ -1,5 +1,6 @@
+import { blankPlan, createCloudProject, downloadPlan, errorMessage, flushCloud } from './cloud';
 import OP from '../core';
-import { S, VIEW_NAMES, ask, PREV_STORE, type Store } from '../store';
+import { S, VIEW_NAMES, ask, type Store } from '../store';
 import { gridItems } from './grid';
 import { toXlsx } from './xlsx';
 import { fromTemplate, type Template } from './templates';
@@ -7,52 +8,14 @@ import type { Project } from '../types';
 
 const U = OP.util, C = OP.charts, IO = OP.io;
 
-const W = window as any;
-const FS = !!W.showSaveFilePicker;
-const TYPES = [{ description: 'OpenPlan project', accept: { 'application/x-openplan': ['.openplan'] } }];
-let handle: any = null;
-
 const MAX_FILE_MB = 20;
+
 function checkSize(file: File) {
-  if (file.size > MAX_FILE_MB * 1024 * 1024) throw new Error('The file is larger than ' + MAX_FILE_MB + ' MB, so it is not an OpenPlan project.');
+  if (file.size > MAX_FILE_MB * 1024 * 1024) throw new Error('檔案超過 ' + MAX_FILE_MB + ' MB。請將計畫拆成較小的專案。');
 }
 
-async function saveFile(as: boolean) {
-  const st = S();
-  if (!FS) { U.download(U.slug(st.p.name) + '.openplan', IO.toJSON(st.p), 'application/x-openplan'); st.toast('Project file downloaded'); return; }
-  try {
-    if (as || !handle) handle = await W.showSaveFilePicker({ suggestedName: U.slug(st.p.name) + '.openplan', types: TYPES });
-    const w = await handle.createWritable();
-    await w.write(IO.toJSON(st.p));
-    await w.close();
-    st.toast('Saved to ' + handle.name);
-  } catch (e: any) {
-    if (e.name !== 'AbortError') st.toast('Could not save: ' + e.message, true);
-  }
-}
-
-async function openHandle(h: any) {
-  const file = await h.getFile();
-  checkSize(file);
-  S().replaceProject(IO.fromJSON(await file.text()), 'Opened ' + file.name);
-  handle = h;
-}
-
-async function openFile() {
-  try {
-    const [h] = await W.showOpenFilePicker({ types: [{ description: 'Project files', accept: { 'application/x-openplan': ['.openplan'], 'application/json': ['.json'] } }] });
-    await openHandle(h);
-  } catch (e: any) {
-    if (e.name !== 'AbortError') S().toast('Could not open file: ' + e.message, true);
-  }
-}
-
-export function handleLaunchFiles() {
-  W.launchQueue?.setConsumer((params: any) => {
-    if (!params.files?.length) return;
-    location.hash = 'app';
-    openHandle(params.files[0]).catch((e: any) => S().toast('Could not open file: ' + e.message, true));
-  });
+function openAsNew(plan: Project) {
+  void createCloudProject(plan).catch(error => S().toast(errorMessage(error), true));
 }
 
 export function scopeRows(st: Store) {
@@ -69,7 +32,7 @@ export function viewSvgString(st: Store): string | null {
   if (!st.s.rows.length && st.view !== 'org') return null;
   if (st.view === 'network') {
     const sr = st.netScope === 'all' ? null : st.s.rows.find((x: any) => String(x.task.uid) === String(st.netScope));
-    const title = sr ? sr.wbs + ' ' + sr.task.name : st.p.name + ' — activity network';
+    const title = sr ? sr.wbs + ' ' + sr.task.name : st.p.name + " — 任務網路圖";
     return C.network({ p: st.p, s: st.s, rows: scopeRows(st), critical: st.critical, dates: st.netDates, title }).svg;
   }
   if (st.view === 'wbs') return C.wbs({ p: st.p, s: st.s, depth: st.wbsDepth }).svg;
@@ -88,47 +51,39 @@ function svgElement(str: string): SVGSVGElement {
 
 // Replaces the current plan; the previous one can be restored from File › Open.
 export function loadProject(p: Project, msg: string) {
-  handle = null;
   S().setUI({ backstage: false, menu: null });
   S().replaceProject(p, msg);
 }
 
 export function openTemplate(t: Template) {
-  ask('Start a new plan from the “' + t.name + '” template? The current one can be restored from File › Open › Restore Previous Project.',
-    () => loadProject(fromTemplate(t), t.name + ' template loaded'), 'Use template');
+  ask('要使用「' + t.name + '」範本建立另一個專案嗎？', () => openAsNew(fromTemplate(t)), '使用範本');
 }
 
 export function runAction(a: string) {
   const st = S(), name = U.slug(st.p.name);
   st.setUI({ menu: null, backstage: false });
   switch (a) {
-    case 'new':
-      ask('Start a new blank project? The current one can be restored with Undo.', () => { handle = null; S().replaceProject(OP.model.blank(), 'New project created'); }, 'New project');
-      break;
-    case 'sample':
-      ask('Open the sample project? The current one can be restored from File › Open › Restore Previous Project.', () => { handle = null; S().replaceProject(OP.demo(), 'Sample project loaded'); }, 'Open sample');
-      break;
+    case 'new': openAsNew(blankPlan()); break;
+    case 'sample': openAsNew(OP.demo()); break;
     case 'restore': {
-      let text: string | null = null;
-      try { text = localStorage.getItem(PREV_STORE); } catch { /* storage unavailable */ }
-      if (!text) { st.toast('There is no previous project to restore.'); break; }
-      try { handle = null; st.replaceProject(IO.fromJSON(text), 'Previous project restored'); } catch (e: any) { st.toast('Could not restore: ' + e.message, true); }
+      if (!st.previous) { st.toast('目前沒有可還原的計畫。'); break; }
+      try { st.replaceProject(IO.fromJSON(st.previous), '已還原上一份計畫。'); }
+      catch (error) { st.toast(errorMessage(error), true); }
       break;
     }
-    case 'open': if (FS) openFile(); else pickFile(false); break;
+    case 'open': pickFile(false); break;
     case 'insert': pickFile(true); break;
     case 'import': st.openDialog('import'); break;
-    case 'share': st.openDialog('share'); break;
-    case 'save': saveFile(false); break;
-    case 'saveas': saveFile(true); break;
+    case 'save': void flushCloud().then(saved => { if (saved) S().toast('已儲存至雲端。'); }); break;
+    case 'saveas': downloadPlan(st.p); st.toast('已下載專案備份。'); break;
     case 'xlsx':
-      U.download(name + '-tasks.xlsx', new Blob([toXlsx(IO.taskTable(st.p), 'Tasks')], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-      st.toast('Excel file downloaded');
+      U.download(name + '-任務清單.xlsx', new Blob([toXlsx(IO.taskTable(st.p), "任務")], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      st.toast("已下載 Excel 檔案。");
       break;
-    case 'csv': U.download(name + '-tasks.csv', '﻿' + IO.toCSV(st.p), 'text/csv'); st.toast('CSV downloaded'); break;
+    case 'csv': U.download(name + '-任務清單.csv', '﻿' + IO.toCSV(st.p), 'text/csv'); st.toast("已下載 CSV 檔案。"); break;
     case 'png': case 'svg': {
       const svg = viewSvgString(st);
-      if (!svg) { st.toast('Switch to Gantt, Network, WBS or Team Chart to export an image.'); return; }
+      if (!svg) { st.toast("請先切換到甘特圖、網路圖、工作分解結構或組織圖，再匯出圖片。"); return; }
       if (a === 'png') IO.exportPNG(svgElement(svg), name + '-' + st.view);
       else IO.exportSVG(svgElement(svg), name + '-' + st.view);
       break;
@@ -151,7 +106,7 @@ function pickFile(insert: boolean) {
   input.onchange = () => {
     const file = input.files && input.files[0];
     if (!file) return;
-    try { checkSize(file); } catch (e: any) { S().toast('Could not open file: ' + e.message, true); return; }
+    try { checkSize(file); } catch (e: any) { S().toast("無法開啟檔案： " + e.message, true); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const st = S();
@@ -161,10 +116,10 @@ function pickFile(insert: boolean) {
           let res = { uid: 0, warnings: [] as string[] };
           st.commit(pp => { res = IO.insertProject(pp, p); });
           st.select([res.uid], res.uid);
-          st.toast('Inserted ' + file.name + ' as a subproject' + (res.warnings.length ? '. Note: ' + res.warnings.join('; ') + '.' : ''), res.warnings.length > 0);
-        } else st.replaceProject(p, 'Opened ' + file.name);
+          st.toast('已將「' + file.name + '」插入為子專案。' + (res.warnings.length ? res.warnings.join('。') + '。' : ''), res.warnings.length > 0);
+        } else openAsNew(p);
       } catch (e: any) {
-        st.toast('Could not open file: ' + e.message, true);
+        st.toast("無法開啟檔案： " + e.message, true);
       }
     };
     reader.readAsText(file);

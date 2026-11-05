@@ -10,39 +10,39 @@ export interface Template { id: string; name: string; desc: string; tasks: Line[
 
 export const TEMPLATES: Template[] = [
   {
-    id: 'fyp', name: 'Final-year project', desc: 'Proposal, research and build, report and submission',
+    id: 'fyp', name: "畢業專題", desc: "從提案、研究製作到撰寫報告與繳交。",
     tasks: [
-      [1, 'Proposal', 1], [2, 'Choose topic and supervisor', 5], [2, 'Literature review', 10, '2'], [2, 'Write project proposal', 5, '3'],
-      [2, 'Proposal approved', 0, '4'],
-      [1, 'Research and build', 1], [2, 'Requirements and design', 10, '5'], [2, 'Build or run experiments', 25, '7'], [2, 'Testing and evaluation', 10, '8'],
-      [1, 'Report', 1], [2, 'Write draft report', 15, '9'], [2, 'Supervisor feedback', 5, '11'], [2, 'Final report and presentation', 7, '12'],
-      [2, 'Submission', 0, '13']
+      [1, "提案", 1], [2, "選定題目與指導老師", 5], [2, "文獻回顧", 10, '2'], [2, "撰寫專題計畫書", 5, '3'],
+      [2, "提案通過", 0, '4'],
+      [1, "研究與製作", 1], [2, "需求分析與設計", 10, '5'], [2, "製作成果或執行實驗", 25, '7'], [2, "測試與評估", 10, '8'],
+      [1, "撰寫報告", 1], [2, "撰寫報告初稿", 15, '9'], [2, "取得指導老師回饋", 5, '11'], [2, "完成報告與簡報", 7, '12'],
+      [2, "繳交成果", 0, '13']
     ]
   },
   {
-    id: 'sprint', name: 'Software sprint', desc: 'Two sprints of design, build and review, then a release',
+    id: 'sprint', name: "軟體開發迭代", desc: "兩輪設計、開發與檢視，最後發布版本。",
     tasks: [
-      [1, 'Sprint 1', 1], [2, 'Sprint planning', 1], [2, 'Design', 2, '2'], [2, 'Development', 5, '3'], [2, 'Code review and testing', 2, '4'],
-      [2, 'Sprint review', 1, '5'],
-      [1, 'Sprint 2', 1], [2, 'Sprint planning', 1, '6'], [2, 'Development', 6, '8'], [2, 'Code review and testing', 2, '9'], [2, 'Sprint review', 1, '10'],
-      [1, 'Release', 1], [2, 'Release preparation', 2, '11'], [2, 'Deploy to production', 1, '13'], [2, 'Release', 0, '14']
+      [1, "第 1 次迭代", 1], [2, "迭代規劃", 1], [2, "設計", 2, '2'], [2, "開發", 5, '3'], [2, "程式碼審查與測試", 2, '4'],
+      [2, "迭代成果檢視", 1, '5'],
+      [1, "第 2 次迭代", 1], [2, "迭代規劃", 1, '6'], [2, "開發", 6, '8'], [2, "程式碼審查與測試", 2, '9'], [2, "迭代成果檢視", 1, '10'],
+      [1, "發布", 1], [2, "發布前準備", 2, '11'], [2, "部署至正式環境", 1, '13'], [2, "發布", 0, '14']
     ]
   },
   {
-    id: 'event', name: 'Event', desc: 'Venue, speakers, promotion, logistics and the day itself',
+    id: 'event', name: "活動企劃", desc: "規劃場地、講者、宣傳、後勤與活動當天流程。",
     tasks: [
-      [1, 'Planning', 1], [2, 'Set goals and budget', 3], [2, 'Book venue', 5, '2'], [2, 'Confirm speakers or performers', 10, '2'],
-      [1, 'Promotion', 1], [2, 'Design promotion materials', 5, '3'], [2, 'Open registration', 10, '6'],
-      [1, 'Delivery', 1], [2, 'Arrange catering and equipment', 5, '3'], [2, 'Final run-through', 1, '4, 7, 9'], [2, 'Event day', 0, '10'],
-      [2, 'Feedback survey and wrap-up', 3, '11']
+      [1, "前期規劃", 1], [2, "設定目標與預算", 3], [2, "預訂場地", 5, '2'], [2, "確認講者或表演者", 10, '2'],
+      [1, "宣傳", 1], [2, "設計宣傳素材", 5, '3'], [2, "開放報名", 10, '6'],
+      [1, "執行", 1], [2, "安排餐飲與設備", 5, '3'], [2, "最後彩排", 1, '4, 7, 9'], [2, "活動當天", 0, '10'],
+      [2, "回饋問卷與結案", 3, '11']
     ]
   },
   {
-    id: 'research', name: 'Research project', desc: 'Question, ethics, data collection, analysis and paper',
+    id: 'research', name: "研究計畫", desc: "從研究問題、倫理審查、資料蒐集到分析與論文。",
     tasks: [
-      [1, 'Preparation', 1], [2, 'Define research question', 5], [2, 'Literature review', 15, '2'], [2, 'Ethics approval', 10, '2'],
-      [1, 'Data collection', 1], [2, 'Design survey or instruments', 5, '3'], [2, 'Collect data', 20, '4, 6'],
-      [1, 'Analysis and writing', 1], [2, 'Analyse data', 10, '7'], [2, 'Write paper', 15, '9'], [2, 'Submit paper', 0, '10']
+      [1, "前期準備", 1], [2, "確定研究問題", 5], [2, "文獻回顧", 15, '2'], [2, "通過研究倫理審查", 10, '2'],
+      [1, "資料蒐集", 1], [2, "設計問卷或研究工具", 5, '3'], [2, "蒐集資料", 20, '4, 6'],
+      [1, "分析與撰寫", 1], [2, "分析資料", 10, '7'], [2, "撰寫論文", 15, '9'], [2, "投稿", 0, '10']
     ]
   }
 ];

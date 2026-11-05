@@ -53,8 +53,8 @@ describe('table import', () => {
     const res = projectFromTable('Design,5\nBuild,soon,1\nTest,2,1, 9');
     expect(res.project.tasks.map((t: any) => t.name)).toEqual(['Design', 'Build', 'Test']);
     expect(res.project.tasks[1].duration).toBe(1);
-    expect(res.warnings).toEqual(['1 duration was not understood and set to 1 day']);
-    expect(() => projectFromTable('\n\n')).toThrow('There are no rows to import.');
+    expect(res.warnings).toEqual(['有 1 筆工期無法辨識，已設為 1 天']);
+    expect(() => projectFromTable('\n\n')).toThrow('找不到可匯入的資料列。');
   });
 });
 

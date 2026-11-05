@@ -4,15 +4,13 @@ import OP from './core';
 import type { Project, Schedule, ViewName } from './types';
 import { capHistory } from './lib/history';
 
-const STORE = 'openplan.project';
-export const PREV_STORE = 'openplan.project.previous';
 const UISTORE = 'openplan.ui';
 
 export const DEFAULT_COLS = ['id', 'ind', 'name', 'duration', 'start', 'finish', 'preds', 'res', 'cost'];
 export const ZOOMS = ['day', 'week', 'month', 'quarter'] as const;
 export const VIEW_NAMES: Record<ViewName, string> = {
-  gantt: 'Gantt Chart', board: 'Task Board', network: 'Network Diagram', wbs: 'WBS Chart', resources: 'Resource Sheet',
-  org: 'Team Chart', workload: 'Resource Usage', budget: 'Cost & Budget', reports: 'Reports'
+  gantt: '甘特圖', board: '任務看板', network: '網路圖', wbs: '工作分解結構', resources: '資源清單',
+  org: '組織圖', workload: '資源使用狀況', budget: '成本與預算', reports: '報表'
 };
 const VIEW_TABS: Partial<Record<ViewName, string>> = {
   gantt: 'task', board: 'task', resources: 'resource', org: 'resource', workload: 'resource', reports: 'report', budget: 'report'
@@ -52,7 +50,7 @@ const UI_DEFAULTS: UIState = {
 const PERSISTED_UI: (keyof UIState)[] = ['view', 'zoom', 'critical', 'gridW', 'ganttHide', 'drawer', 'netDates', 'wbsDepth', 'filter', 'group', 'sort', 'cols', 'showBaseline', 'report', 'tab', 'timeline', 'theme', 'bars', 'fullYear', 'guide'];
 
 export interface Dialog { type: string; props?: any }
-export type SaveState = 'ok' | 'full' | 'off';
+export type SaveState = 'ok' | 'pending' | 'error' | 'conflict';
 
 export interface Store extends UIState {
   p: Project;
@@ -60,6 +58,9 @@ export interface Store extends UIState {
   undo: string[];
   redo: string[];
   saveState: SaveState;
+  saveError: string;
+  cloudId: string | null;
+  previous: string | null;
   sel: number[];
   anchor: number | null;
   collapsed: Record<string, boolean>;
@@ -111,49 +112,8 @@ function saveUI(st: Store) {
   } catch { /* storage unavailable */ }
 }
 
-let loadError = false, autosaveBlocked = false;
-
-function persistNow(json: string): SaveState {
-  if (autosaveBlocked) return 'off';
-  try {
-    localStorage.setItem(STORE, json);
-    return 'ok';
-  } catch (e: any) {
-    return e && (e.name === 'QuotaExceededError' || e.code === 22) ? 'full' : 'off';
-  }
-}
-
-// Autosave is debounced; pending changes are written when the page is hidden or closed.
-let pending: string | null = null, timer = 0;
-function flush() {
-  clearTimeout(timer);
-  if (pending == null) return;
-  const state = persistNow(pending);
-  pending = null;
-  useStore.setState({ saveState: state });
-}
-function persist(json: string) {
-  pending = json;
-  clearTimeout(timer);
-  timer = window.setTimeout(flush, 300);
-}
-
-function loadProject(): Project {
-  let saved: string | null = null;
-  try { saved = localStorage.getItem(STORE); } catch { /* storage unavailable */ }
-  if (saved) {
-    try {
-      return OP.io.fromJSON(saved);
-    } catch {
-      // Keep the unreadable copy; if it cannot be kept, never overwrite it.
-      loadError = true;
-      try { localStorage.setItem(STORE + '.unreadable-' + Date.now(), saved); } catch { autosaveBlocked = true; }
-    }
-  }
-  return OP.model.normalize(OP.demo());
-}
-
-const initial = loadProject();
+let persist: (json: string) => void = () => {};
+const initial: Project = OP.model.blank();
 let toastId = 0;
 
 export const useStore = create<Store>((set, get) => ({
@@ -163,7 +123,10 @@ export const useStore = create<Store>((set, get) => ({
   s: OP.schedule(initial),
   undo: [],
   redo: [],
-  saveState: loadError ? (autosaveBlocked ? 'off' : 'ok') : persistNow(JSON.stringify(initial)),
+  saveState: 'ok',
+  saveError: '',
+  cloudId: null,
+  previous: null,
   sel: [],
   anchor: null,
   collapsed: {},
@@ -215,12 +178,10 @@ export const useStore = create<Store>((set, get) => ({
     persist(text);
   },
 
-  // The replaced project is kept in browser storage so it can be restored after a reload.
   replaceProject: (p, msg) => {
     OP.model.normalize(p);
     const old = JSON.stringify(get().p);
-    try { localStorage.setItem(PREV_STORE, old); } catch { /* storage unavailable */ }
-    set({ p, s: OP.schedule(p), undo: capHistory(get().undo.concat([old])), redo: [], sel: [], collapsed: {} });
+    set({ p, s: OP.schedule(p), previous: old, undo: capHistory(get().undo.concat([old])), redo: [], sel: [], collapsed: {} });
     persist(JSON.stringify(p));
     if (msg) get().toast(msg);
   },
@@ -244,24 +205,15 @@ export function useApp(): Store {
   })) as Store;
 }
 
-window.addEventListener('pagehide', flush);
-
-// Another tab saved the project: show its version here so the two tabs don't overwrite each other.
-window.addEventListener('storage', e => {
-  if (e.key !== STORE || !e.newValue) return;
-  try {
-    const p = OP.io.fromJSON(e.newValue);
-    pending = null;
-    clearTimeout(timer);
-    useStore.setState({ p, s: OP.schedule(p), sel: [] });
-    S().toast('Project updated from another tab');
-  } catch { /* ignore unreadable data */ }
-});
-
-if (loadError) {
-  setTimeout(() => S().toast(autosaveBlocked
-    ? 'Your autosaved project could not be read and was left untouched. Autosave is off: use File › Save.'
-    : 'Your autosaved project could not be read. A copy was kept in browser storage and the sample project was opened.', true));
+export function attachEditor(id: string | null, plan: Project, onChange: (json: string) => void, taskUid?: number) {
+  persist = onChange;
+  const sel = taskUid != null && plan.tasks.some(task => task.uid === taskUid) ? [taskUid] : [];
+  useStore.setState({
+    cloudId: id, p: plan, s: OP.schedule(plan), undo: [], redo: [], previous: null,
+    sel, anchor: sel[0] ?? null, collapsed: {}, backstage: false, bsPage: 'info', menu: null, dialog: null,
+    netScope: 'all', filter: 'all', group: 'none', sort: 'id', saveState: 'ok', saveError: '',
+    ...(sel.length ? { view: 'gantt' as const, tab: 'task', drawer: true } : {}),
+  });
 }
 
 export function taskByUid(uid: number) { return S().p.tasks.find(t => t.uid === uid) || null; }
@@ -278,7 +230,7 @@ export function focusKey(fk: string, select = true) {
   });
 }
 
-export function ask(message: string, onOk: () => void, okLabel = 'OK', title = 'Please confirm') {
+export function ask(message: string, onOk: () => void, okLabel = '確定', title = '請確認') {
   S().openDialog('confirm', { message, onOk, okLabel, title });
 }
 

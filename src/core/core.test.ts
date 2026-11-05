@@ -75,7 +75,7 @@ describe('project files', () => {
   });
 
   it('rejects files that are not OpenPlan projects', () => {
-    expect(() => OP.io.fromJSON('{"hello":1}')).toThrow('Not an OpenPlan project file.');
+    expect(() => OP.io.fromJSON('{"hello":1}')).toThrow('無法辨識為 OpenPlan 專案檔案。');
     expect(() => OP.io.fromJSON('not json')).toThrow();
   });
 });

@@ -1,5 +1,6 @@
 const ICONS: Record<string, string> = {
   plus: 'M12 5v14M5 12h14', menu: 'M4 6h16M4 12h16M4 18h16', diamond: 'M12 3l8 9-8 9-8-9z',
+  calendar: 'M4 6h16v14H4zM8 3v6M16 3v6M4 11h16',
   outdent: 'M21 6H11M21 12H11M21 18H11M7 8l-4 4 4 4', indent: 'M21 6H11M21 12H11M21 18H11M3 8l4 4-4 4',
   up: 'M12 19V5M5 12l7-7 7 7', down: 'M12 5v14M19 12l-7 7-7-7',
   link: 'M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5',

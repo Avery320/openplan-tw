@@ -2,7 +2,7 @@ import OP from './core.js';
 /* SVG renderers: Gantt chart, network (AON) diagram, WBS chart, organisation chart, cost charts. */
 OP.charts = (function () {
   var U = OP.util, esc = U.esc;
-  var FONT = "'Segoe UI', Tahoma, Arial, sans-serif";
+  var FONT = "'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
 
   var STYLE =
     'text{font-family:' + FONT + ';font-size:11.5px;fill:var(--text)}' +
@@ -60,7 +60,7 @@ OP.charts = (function () {
     var start = lo - 2, end = hi + 21;
     if (o.zoom === 'week') start -= U.weekday(start) === 0 ? 6 : U.weekday(start) - 1;
     if (o.zoom === 'month' || o.zoom === 'quarter') { var d0 = U.toDate(start); start -= d0.getUTCDate() - 1; end += o.zoom === 'quarter' ? 100 : 20; }
-    var cols = o.table ? [['ID', 34], ['Task Name', 280], ['Duration', 66], ['Start', 78], ['Finish', 78]] : [];
+    var cols = o.table ? [['ID', 34], ["任務名稱", 280], ["工期", 66], ["開始", 78], ["完成", 78]] : [];
     var tw = cols.reduce(function (a, c) { return a + c[1]; }, 0);
     var W = tw + (end - start) * ppd, H = HDR + Math.max(rows.length, 1) * ROW + 1;
     function X(dn) { return tw + (dn - start) * ppd; }
@@ -79,7 +79,7 @@ OP.charts = (function () {
     for (dn = start; dn <= end; dn++) {
       var d = U.toDate(dn), wd = U.weekday(dn), day = d.getUTCDate(), mon = d.getUTCMonth(), yr = d.getUTCFullYear();
       if (o.zoom === 'day') {
-        if (wd === 1 || dn === start) top.push([dn, 'Week of ' + U.fmt(dn)]);
+        if (wd === 1 || dn === start) top.push([dn, "該週起始日 " + U.fmt(dn)]);
         bot.push([dn, 'SMTWTFS'[wd] + ' ' + day]);
       } else if (o.zoom === 'week') {
         if (day === 1 || dn === start) top.push([dn, U.MONTHS[mon] + ' ' + yr]);
@@ -146,9 +146,9 @@ OP.charts = (function () {
       var showBase = o.baseline && r.base;
       var by = showBase ? y + 3 : y + 6, bh = showBase ? 11 : 12;
       var tip = '<title>' + esc(r.id + '. ' + r.task.name + ' — ' + U.fmt(r.startDn) + ' to ' + U.fmt(r.finishDn) + ', ' + OP.model.fmtDuration(r.duration) +
-        (r.slack > 0 ? ', slack ' + U.num(r.slack) + 'd' : '') + (r.percent ? ', ' + r.percent + '% complete' : '') +
-        (r.base ? '\nBaseline: ' + U.fmt(r.base.startDn) + ' to ' + U.fmt(r.base.finishDn) : '') +
-        (r.task.deadline ? '\nDeadline: ' + U.fmt(U.parseDate(r.task.deadline)) : '')) + '</title>';
+        (r.slack > 0 ? '，總浮時 ' + U.num(r.slack) + 'd' : '') + (r.percent ? ', ' + r.percent + "完成率" : '') +
+        (r.base ? '\n基準線：' + U.fmt(r.base.startDn) + ' to ' + U.fmt(r.base.finishDn) : '') +
+        (r.task.deadline ? '\n期限：' + U.fmt(U.parseDate(r.task.deadline)) : '')) + '</title>';
       h.push('<g class="gbar" data-uid="' + esc(r.task.uid) + '" tabindex="0" role="button" aria-label="' + esc(r.id + '. ' + r.task.name) + '">' + tip);
       if (showBase) {
         var bx1 = X(r.base.startDn), bx2 = X(r.base.finishDn) + ppd;
@@ -214,7 +214,7 @@ OP.charts = (function () {
     if (today >= start && today <= end) h.push('<line class="today" x1="' + X(today) + '" y1="' + HDR + '" x2="' + X(today) + '" y2="' + H + '"/>');
     if (o.p.statusDate && s.statusDn >= start && s.statusDn <= end) {
       var sxl = X(s.statusDn) + ppd;
-      h.push('<line class="gstat" x1="' + sxl + '" y1="' + HDR + '" x2="' + sxl + '" y2="' + H + '"/><text class="sm gstat-t" x="' + (sxl + 4) + '" y="' + (HDR + 11) + '">Status date</text>');
+      h.push('<line class="gstat" x1="' + sxl + '" y1="' + HDR + '" x2="' + sxl + '" y2="' + H + '"/><text class="sm gstat-t" x="' + (sxl + 4) + '" y="' + (HDR + 11) + '">狀態日期</text>');
     }
     h.push('</svg>');
     return { svg: h.join(''), X: X, ppd: ppd, start: start, tableWidth: tw, pos: pos };
@@ -274,11 +274,11 @@ OP.charts = (function () {
 
     // Legend
     var lx = PAD, ly = PAD;
-    h.push('<text class="b lg" x="' + lx + '" y="' + (ly + 4) + '">' + esc(o.title || 'Activity network (AON)') + '</text>');
-    h.push(nodeBox(lx, ly + 16, { es: 'ES', dur: 'Duration', ef: 'EF', id: 'ID', name: 'Task name', res: 'Resources', ls: 'LS', slack: 'Total slack', lf: 'LF', crit: false, legend: true }));
-    h.push('<text class="m sm" x="' + (lx + NW + 16) + '" y="' + (ly + 40) + '">Values are in working days from project start (day 0).</text>');
-    h.push('<text class="m sm" x="' + (lx + NW + 16) + '" y="' + (ly + 58) + '">Red border and arrows = critical path (zero total slack).</text>');
-    h.push('<text class="m sm" x="' + (lx + NW + 16) + '" y="' + (ly + 76) + '">Slack = LS − ES. Project duration: ' + U.num(s.duration) + ' working days.</text>');
+    h.push('<text class="b lg" x="' + lx + '" y="' + (ly + 4) + '">' + esc(o.title || "任務網路圖（AON）") + '</text>');
+    h.push(nodeBox(lx, ly + 16, { es: 'ES', dur: "工期", ef: 'EF', id: 'ID', name: "任務名稱", res: "資源", ls: 'LS', slack: "總浮時", lf: 'LF', crit: false, legend: true }));
+    h.push('<text class="m sm" x="' + (lx + NW + 16) + '" y="' + (ly + 40) + '">天數以專案開始日（第 0 天）起算，只計工作日。</text>');
+    h.push('<text class="m sm" x="' + (lx + NW + 16) + '" y="' + (ly + 58) + '">紅色邊框與箭頭表示關鍵路徑（總浮時為零）。</text>');
+    h.push('<text class="m sm" x="' + (lx + NW + 16) + '" y="' + (ly + 76) + '">總浮時 = 最晚開始 − 最早開始。專案工期 ' + U.num(s.duration) + ' 個工作日。</text>');
 
     function edgePath(a, b, crit) {
       var x1 = a.x2, y1 = a.y, x2 = b.x1, y2 = b.y, mx = (x1 + x2) / 2;
@@ -299,7 +299,7 @@ OP.charts = (function () {
       if (!hasIn[r.i]) h.push(edgePath(sPort, port(r.i), crit && r.es === 0));
       if (!hasOut[r.i]) h.push(edgePath(port(r.i), ePort, crit && Math.abs(r.ef - s.duration) < 1e-9));
     });
-    [[startN, 'Start', '0'], [endN, 'Finish', U.num(s.duration)]].forEach(function (n) {
+    [[startN, "開始", '0'], [endN, "完成", U.num(s.duration)]].forEach(function (n) {
       h.push('<rect class="node c" x="' + n[0].x + '" y="' + (n[0].y - 24) + '" width="' + SW + '" height="48"/>');
       h.push('<text class="b" text-anchor="middle" x="' + (n[0].x + SW / 2) + '" y="' + (n[0].y - 2) + '">' + n[1] + '</text>');
       h.push('<text class="m sm" text-anchor="middle" x="' + (n[0].x + SW / 2) + '" y="' + (n[0].y + 13) + '">day ' + n[2] + '</text>');
@@ -542,7 +542,7 @@ OP.charts = (function () {
       data.forEach(function (d, i) {
         var cx = L + step * i + step / 2;
         h.push('<circle class="cbar" cx="' + cx + '" cy="' + Y(d.cum) + '" r="4" stroke="var(--surface)" stroke-width="2"/>');
-        h.push('<rect class="hit" x="' + (L + step * i) + '" y="' + T + '" width="' + step + '" height="' + ph + '"><title>' + esc(d.label + ': ' + U.money(d.cum, cur) + ' cumulative') + '</title></rect>');
+        h.push('<rect class="hit" x="' + (L + step * i) + '" y="' + T + '" width="' + step + '" height="' + ph + '"><title>' + esc(d.label + ': ' + U.money(d.cum, cur) + ' 累計') + '</title></rect>');
       });
       if (+o.p.budget > 0) {
         var by = Y(+o.p.budget);

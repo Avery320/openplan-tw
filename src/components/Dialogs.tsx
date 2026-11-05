@@ -1,3 +1,4 @@
+import { labelFor } from '../locale';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import OP from '../core';
 import { useStore, S } from '../store';
@@ -6,13 +7,12 @@ import Icon from './Icon';
 import type { CustomField, Resource } from '../types';
 import { version } from '../../package.json';
 import { projectFromTable } from '../lib/importTable';
-import { shareUrl } from '../lib/share';
 import { loadProject } from '../lib/actions';
 
 const U = OP.util;
 const STATUSES = ['Draft', 'In review', 'Approved', 'Baselined', 'Final'];
 
-function Modal({ title, children, onSubmit, okLabel = 'Save', cancelLabel = 'Cancel', noOk }: {
+function Modal({ title, children, onSubmit, okLabel = "儲存", cancelLabel = "取消", noOk }: {
   title: string; children: ReactNode; onSubmit?: (fd: FormData) => boolean | void; okLabel?: ReactNode; cancelLabel?: string; noOk?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -29,7 +29,7 @@ function Modal({ title, children, onSubmit, okLabel = 'Save', cancelLabel = 'Can
   return (
     <dialog ref={ref} onClose={close} onCancel={e => { e.preventDefault(); close(); }}>
       <form onSubmit={submit}>
-        <div className="dlg-head"><h2>{title}</h2><button type="button" className="icon-btn" aria-label="Close" onClick={close}><Icon name="x" /></button></div>
+        <div className="dlg-head"><h2>{title}</h2><button type="button" className="icon-btn" aria-label="關閉" onClick={close}><Icon name="x" /></button></div>
         <div className="dlg-body">{children}</div>
         <div className="dlg-foot">
           <button type="button" className="btn" onClick={close}>{cancelLabel}</button>
@@ -58,13 +58,13 @@ function SettingsDialog() {
   const patchField = (k: number, patch: Partial<CustomField>) => setFields(fields.map((f, i) => (i === k ? { ...f, ...patch } : f)));
   const statuses = STATUSES.includes(p.status) || !p.status ? STATUSES : STATUSES.concat([p.status]);
   return (
-    <Modal title="Project information" onSubmit={fd => {
+    <Modal title="專案資訊" onSubmit={fd => {
       const bad: string[] = [];
       const hol = parseDates(fd.get('holidays'), bad);
-      if (bad.length) st.toast('Ignored invalid holiday dates: ' + bad.join(', '), true);
+      if (bad.length) st.toast("已略過無效的假日日期： " + bad.join(', '), true);
       const cfs = fields.map(f => ({ ...f, name: f.name.trim() })).filter(f => f.name);
       st.commit(pp => {
-        pp.name = String(fd.get('name')).trim() || 'Untitled project';
+        pp.name = String(fd.get('name')).trim() || "未命名專案";
         pp.organization = String(fd.get('organization'));
         pp.manager = String(fd.get('manager'));
         pp.status = String(fd.get('status'));
@@ -80,34 +80,34 @@ function SettingsDialog() {
         pp.tasks.forEach(t => { Object.keys(t.custom).forEach(id => { if (!keep.has(id)) delete t.custom[id]; }); });
       });
     }}>
-      <F label="Project name" name="name" value={p.name} />
-      <div className="row2"><F label="Issuing organisation" name="organization" value={p.organization} /><F label="Project manager" name="manager" value={p.manager} /></div>
+      <F label="專案名稱" name="name" value={p.name} maxLength={160} required />
+      <div className="row2"><F label="發布單位" name="organization" value={p.organization} /><F label="專案經理" name="manager" value={p.manager} /></div>
       <div className="row2">
-        <label className="field"><span>Status</span><select className="sel" name="status" defaultValue={p.status}>
-          {statuses.map(s => <option key={s}>{s}</option>)}
+        <label className="field"><span>狀態</span><select className="sel" name="status" defaultValue={p.status}>
+          {statuses.map(s => <option key={s} value={s}>{labelFor(s)}</option>)}
         </select></label>
-        <F label="Date of issue" name="issueDate" value={p.issueDate} type="date" />
+        <F label="發布日期" name="issueDate" value={p.issueDate} type="date" />
       </div>
-      <div className="row2"><F label="Project start date" name="start" value={p.start} type="date" required /><F label="Status date (for tracking)" name="statusDate" value={p.statusDate} type="date" /></div>
+      <div className="row2"><F label="專案開始日期" name="start" value={p.start} type="date" required /><F label="狀態日期（進度統計基準）" name="statusDate" value={p.statusDate} type="date" /></div>
       <div className="row3">
-        <F label="Budget" name="budget" value={p.budget} type="number" min={0} step={1000} />
-        <F label="Currency symbol" name="currency" value={p.currency} />
-        <F label="Hours per working day" name="hoursPerDay" value={p.hoursPerDay} type="number" min={1} max={24} step={0.5} />
+        <F label="預算" name="budget" value={p.budget} type="number" min={0} step={1000} />
+        <F label="幣別符號" name="currency" value={p.currency} />
+        <F label="每日工作時數" name="hoursPerDay" value={p.hoursPerDay} type="number" min={1} max={24} step={0.5} />
       </div>
-      <label className="field"><span>Holidays (one date per line, YYYY-MM-DD) — non-working days besides weekends</span>
+      <label className="field"><span>假日（每行填一個 YYYY-MM-DD 日期，週末已列為非工作日）</span>
         <textarea className="inp" name="holidays" rows={3} defaultValue={(p.holidays || []).join('\n')} /></label>
-      <div className="field"><span>Custom task fields</span>
+      <div className="field"><span>自訂任務欄位</span>
         <div className="mini-list">
           {fields.map((f, k) => (
             <div className="mini-row cf" key={f.id}>
-              <input className="inp" aria-label="Field name" placeholder="e.g. Owner" value={f.name} onChange={e => patchField(k, { name: e.target.value })} />
-              <select className="sel" aria-label="Field type" value={f.type} onChange={e => patchField(k, { type: e.target.value as CustomField['type'] })}>
-                <option value="text">Text</option><option value="number">Number</option>
+              <input className="inp" aria-label="欄位名稱" placeholder="例如：責任人" value={f.name} onChange={e => patchField(k, { name: e.target.value })} />
+              <select className="sel" aria-label="欄位類型" value={f.type} onChange={e => patchField(k, { type: e.target.value as CustomField['type'] })}>
+                <option value="text">文字</option><option value="number">數字</option>
               </select>
-              <button type="button" className="icon-btn" aria-label="Remove field" onClick={() => setFields(fields.filter((_, i) => i !== k))}><Icon name="x" /></button>
+              <button type="button" className="icon-btn" aria-label="移除欄位" onClick={() => setFields(fields.filter((_, i) => i !== k))}><Icon name="x" /></button>
             </div>
           ))}
-          <button type="button" className="btn ghost" onClick={() => setFields(fields.concat([{ id: 'c' + Date.now().toString(36) + fields.length, name: '', type: 'text' }]))}><Icon name="plus" />Add field</button>
+          <button type="button" className="btn ghost" onClick={() => setFields(fields.concat([{ id: 'c' + Date.now().toString(36) + fields.length, name: '', type: 'text' }]))}><Icon name="plus" />新增欄位</button>
         </div>
       </div>
     </Modal>
@@ -117,7 +117,7 @@ function SettingsDialog() {
 function RecurringDialog() {
   const st = useStore();
   return (
-    <Modal title="Recurring task" okLabel="Create" onSubmit={fd => {
+    <Modal title="週期性任務" okLabel="建立" onSubmit={fd => {
       const name = String(fd.get('name')).trim(), first = U.parseDate(String(fd.get('first')));
       if (!name || first == null) return false;
       ops.createRecurring({
@@ -126,19 +126,19 @@ function RecurringDialog() {
       });
       st.setView('gantt');
     }}>
-      <F label="Task name" name="name" value="Sprint review" required />
+      <F label="任務名稱" name="name" value="Sprint review" required />
       <div className="row3">
-        <F label="Duration (days)" name="duration" value={1} type="number" min={0} step={0.5} />
-        <F label="First occurrence" name="first" value={U.iso(st.s.startDn)} type="date" required />
-        <F label="Occurrences" name="count" value={4} type="number" min={1} max={104} />
+        <F label="工期（天）" name="duration" value={1} type="number" min={0} step={0.5} />
+        <F label="首次執行" name="first" value={U.iso(st.s.startDn)} type="date" required />
+        <F label="執行次數" name="count" value={4} type="number" min={1} max={104} />
       </div>
       <div className="row2">
-        <label className="field"><span>Repeat</span><select className="sel" name="unit" defaultValue="week">
-          <option value="week">Weekly</option><option value="month">Monthly</option><option value="day">Daily (working days)</option>
+        <label className="field"><span>重複</span><select className="sel" name="unit" defaultValue="week">
+          <option value="week">每週</option><option value="month">每月</option><option value="day">每個工作日</option>
         </select></label>
-        <F label="Every" name="every" value={2} type="number" min={1} max={52} />
+        <F label="間隔" name="every" value={2} type="number" min={1} max={52} />
       </div>
-      <p className="muted small">Creates a summary task with one subtask per occurrence, each fixed with a “Start no earlier than” date.</p>
+      <p className="muted small">建立一項摘要任務，每次執行各有一項子任務，並設定最早開始日期。</p>
     </Modal>
   );
 }
@@ -148,7 +148,7 @@ function ResourceDialog({ uid }: { uid: number }) {
   if (!r) return null;
   const rates = (r.rates || []).map(e => e.from + ' ' + e.rate).join('\n');
   return (
-    <Modal title={r.name || 'Resource'} onSubmit={fd => {
+    <Modal title={r.name || "資源"} onSubmit={fd => {
       const bad: string[] = [];
       const vac = parseDates(fd.get('vacations'), bad);
       const rateList: { from: string; rate: number }[] = [];
@@ -157,7 +157,7 @@ function ResourceDialog({ uid }: { uid: number }) {
         if (m) rateList.push({ from: m[1], rate: +m[2] });
         else if (line.trim()) bad.push(line.trim());
       });
-      if (bad.length) st.toast('Ignored: ' + bad.join(', '), true);
+      if (bad.length) st.toast("已略過： " + bad.join(', '), true);
       st.commit(p => {
         const x = p.resources.find(y => y.uid === uid)!;
         if (x.kind === 'Work') {
@@ -170,51 +170,51 @@ function ResourceDialog({ uid }: { uid: number }) {
       });
     }}>
       {r.kind === 'Work' && <>
-        <label className="field"><span>Working days</span><div className="chk-row">
-          {[1, 2, 3, 4, 5, 6, 0].map(d => <label key={d} className="chk"><input type="checkbox" name="wd" value={d} defaultChecked={r.workDays.includes(d)} />{U.DAYS[d]}</label>)}
+        <label className="field"><span>工作日</span><div className="chk-row">
+          {[1, 2, 3, 4, 5, 6, 0].map(d => <label key={d} className="chk"><input type="checkbox" name="wd" value={d} defaultChecked={r.workDays.includes(d)} />週{U.DAYS[d]}</label>)}
         </div></label>
-        <label className="field"><span>Vacations / days off (one date per line, YYYY-MM-DD)</span><textarea className="inp" name="vacations" rows={3} defaultValue={r.vacations.join('\n')} /></label>
-        <label className="field"><span>Rate changes (one per line: effective date and new hourly rate)</span><textarea className="inp" name="rates" rows={3} placeholder="2026-04-01 8500" defaultValue={rates} /></label>
-        <p className="muted small">Working days and vacations set when this person is available: they drive overallocation warnings and resource leveling.</p>
+        <label className="field"><span>休假／不在班（每行填一個 YYYY-MM-DD 日期）</span><textarea className="inp" name="vacations" rows={3} defaultValue={r.vacations.join('\n')} /></label>
+        <label className="field"><span>費率異動（每行填生效日期與新時薪）</span><textarea className="inp" name="rates" rows={3} placeholder="2026-04-01 8500" defaultValue={rates} /></label>
+        <p className="muted small">依工作日與休假判斷人員何時可投入，並用於超額分配提示及資源平衡。</p>
       </>}
-      {r.kind === 'Material' && <F label="Material label (unit)" name="materialLabel" value={r.materialLabel} placeholder="e.g. licences, servers" />}
+      {r.kind === 'Material' && <F label="材料單位" name="materialLabel" value={r.materialLabel} placeholder="例如：套、台" />}
       {r.kind !== 'Cost'
-        ? <F label={'Cost per use (' + st.p.currency + ')'} name="costPerUse" value={r.costPerUse} type="number" min={0} step={100} />
-        : <p className="muted">Cost resources (travel, licences, fees) have no rate: enter the amount on each task assignment.</p>}
+        ? <F label={"每次使用成本（" + st.p.currency + ')'} name="costPerUse" value={r.costPerUse} type="number" min={0} step={100} />
+        : <p className="muted">差旅、授權或規費等成本資源，可在各項任務的指派欄位直接填金額。</p>}
     </Modal>
   );
 }
 
 const SHORTCUTS: [ReactNode, string][] = [
-  [<><kbd>Enter</kbd> <kbd>↑</kbd> <kbd>↓</kbd></>, 'Move between rows'],
-  [<><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> / <kbd>←</kbd></>, 'Indent / outdent'],
-  [<kbd>Ins</kbd>, 'Insert a new task'],
-  [<kbd>Del</kbd>, 'Delete the selected tasks'],
-  [<><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd></>, 'Undo / redo'],
-  [<><kbd>Ctrl</kbd>+<kbd>S</kbd></>, 'Save to a file']
+  [<><kbd>Enter</kbd> <kbd>↑</kbd> <kbd>↓</kbd></>, "在各列間移動"],
+  [<><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> / <kbd>←</kbd></>, "增加／減少縮排"],
+  [<kbd>Ins</kbd>, "插入任務"],
+  [<kbd>Del</kbd>, "刪除選取的任務"],
+  [<><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd></>, "復原／重做"],
+  [<><kbd>Ctrl</kbd>+<kbd>S</kbd></>, "儲存至雲端"]
 ];
 
 function AboutDialog() {
   return (
-    <Modal title="About OpenPlan" cancelLabel="Close" noOk>
+    <Modal title="關於 OpenPlan" cancelLabel="關閉" noOk>
       <div className="about-head">
         <img src="./assets/OpenPlan.png" alt="" width={44} height={44} />
-        <div><h3>OpenPlan</h3><span className="muted">Version {version} · Free, browser-based project planning</span></div>
+        <div><h3>OpenPlan</h3><span className="muted">版本 {version} · 台灣繁體中文</span></div>
       </div>
-      <p>Plan with a WBS, Gantt chart, critical path, network diagram, resources, leveling, baselines, tracking, earned value, budget and reports. Your project is saved automatically in this browser only; use <b>File › Save</b> to keep a copy as an .openplan file.</p>
+      <p>使用甘特圖、工作分解結構、資源指派和報表規劃專案。變更會自動儲存至雲端，也可從<b>檔案 › 儲存</b>下載 .openplan 備份。</p>
       <section className="about-sec">
-        <h4>Keyboard shortcuts</h4>
+        <h4>快速鍵</h4>
         <table className="about-keys"><tbody>{SHORTCUTS.map(([keys, action]) => <tr key={action}><td>{keys}</td><td>{action}</td></tr>)}</tbody></table>
       </section>
       <section className="about-sec">
-        <h4>Tips</h4>
+        <h4>操作技巧</h4>
         <dl className="about-tips">
-          <dt>Rename the project</dt><dd>Click the name in the title bar. <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</dd>
-          <dt>Gantt chart</dt><dd>Drag a bar to move it (sets a “Start no earlier than” constraint), drag its right edge to change the duration, or drag it onto another bar to link the two.</dd>
-          <dt>Predecessors</dt><dd>Type task IDs separated by commas. Link types are FS (default), SS, FF and SF, with optional lag, e.g. <code>3, 5SS+2d, 7FF-1d</code>.</dd>
+          <dt>重新命名專案</dt><dd>點一下標題列的專案名稱。 <kbd>Enter</kbd> 儲存； <kbd>Esc</kbd> 取消。</dd>
+          <dt>甘特圖</dt><dd>拖曳時程條可設定最早開始日期，拖曳右緣可調整工期，拖到另一個時程條上可建立依賴關係。</dd>
+          <dt>前置任務</dt><dd>以逗號分隔任務編號，可指定 FS（預設）、SS、FF、SF 關係及延遲天數，例如 <code>3, 5SS+2d, 7FF-1d</code>.</dd>
         </dl>
       </section>
-      <p className="about-foot muted">Open source under the <a href="https://github.com/MNSBaanu/OpenPlan/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT License</a> · <a href="https://github.com/MNSBaanu/OpenPlan" target="_blank" rel="noreferrer">Source on GitHub</a> · Made by MNS Baanu</p>
+      <p className="about-foot muted">採用 <a href="https://github.com/MNSBaanu/OpenPlan/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT 授權條款</a> · <a href="https://github.com/MNSBaanu/OpenPlan" target="_blank" rel="noreferrer">GitHub 原始碼</a> · 原作者 MNS Baanu</p>
     </Modal>
   );
 }
@@ -229,45 +229,24 @@ function ImportDialog() {
   const ok = result && 'project' in result ? result : null;
   const pickFile = async (file?: File) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { S().toast('That file is larger than 5 MB. Choose a CSV task list.', true); return; }
+    if (file.size > 5 * 1024 * 1024) { S().toast("檔案超過 5 MB。請選擇較小的 CSV 任務清單。", true); return; }
     setText(await file.text());
   };
   return (
-    <Modal title="Import tasks from Excel or CSV" okLabel="Import" onSubmit={() => {
+    <Modal title="從 Excel 或 CSV 匯入任務" okLabel="匯入" onSubmit={() => {
       if (!ok) return false;
-      loadProject(ok.project, 'Imported ' + ok.tasks + ' task' + (ok.tasks > 1 ? 's' : '') + (ok.warnings.length ? '. ' + ok.warnings.join('; ') + '.' : ''));
+      loadProject(ok.project, '已匯入 ' + ok.tasks + ' 項任務。' + ok.warnings.join('。'));
     }}>
-      <p>Copy the task list in Excel or Google Sheets and paste it below, or choose a CSV file. Columns are matched by their headings: Task Name, Duration, Predecessors, Resources, Level or WBS, % Complete and Notes. Without headings, the columns are read as task name, duration and predecessors.</p>
-      <textarea className="inp mono" id="import-text" rows={9} value={text} onChange={e => setText(e.target.value)} aria-label="Task list"
-        placeholder={['Task Name, Duration, Predecessors', 'Design, 5', 'Build, 10, 1', 'Launch, 0, 2'].join('\n')} />
+      <p>可貼上 Excel 或 Google 試算表中的任務清單，或選擇 CSV 檔案。支援任務名稱、工期、前置任務、資源、層級、WBS、完成率和備註欄。沒有欄名時，依序讀取任務名稱、工期和前置任務。</p>
+      <textarea className="inp mono" id="import-text" rows={9} value={text} onChange={e => setText(e.target.value)} aria-label="任務清單"
+        placeholder={['任務名稱,工期,前置任務', '設計,5', '製作,10,1', '上線,0,2'].join('\n')} />
       <div className="row-actions">
-        <button type="button" className="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" />Choose CSV file…</button>
+        <button type="button" className="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" />選擇 CSV 檔案…</button>
         <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,text/csv" hidden onChange={e => pickFile(e.target.files?.[0])} />
       </div>
-      {ok && <p className="muted">Found {ok.tasks} task{ok.tasks > 1 ? 's' : ''} and {ok.resources} resource{ok.resources === 1 ? '' : 's'}. Importing replaces the current plan, which you can bring back from File › Open › Restore Previous Project.</p>}
-      {ok && ok.warnings.length > 0 && <p className="alert warn inline">{ok.warnings.join('; ')}.</p>}
+      {ok && <p className="muted">找到 {ok.tasks} 項任務和 {ok.resources} 筆資源。匯入會取代目前計畫，可用「復原」回到匯入前。</p>}
+      {ok && ok.warnings.length > 0 && <p className="alert warn inline">{ok.warnings.join('。')}.</p>}
       {result && 'error' in result && <p className="alert inline">{result.error}</p>}
-    </Modal>
-  );
-}
-
-function ShareDialog() {
-  const [url, setUrl] = useState(''), [error, setError] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { shareUrl(S().p).then(setUrl, (e: Error) => setError(e.message)); }, []);
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(url); S().toast('Share link copied'); }
-    catch { inputRef.current?.select(); S().toast('Press Ctrl+C to copy the selected link.'); }
-  };
-  return (
-    <Modal title="Share a copy of this plan" cancelLabel="Close" noOk>
-      <p>Anyone who opens this link gets their own copy of the plan in their browser. Their changes don't affect yours. The plan travels inside the link and is never uploaded.</p>
-      <div className="share-row">
-        <input ref={inputRef} className="inp" id="share-url" readOnly value={url || 'Creating link…'} aria-label="Share link" onFocus={e => e.target.select()} />
-        <button type="button" className="btn primary" disabled={!url} onClick={copy}><Icon name="link" />Copy link</button>
-      </div>
-      {url && <p className="muted small">Link length: {Math.ceil(url.length / 1024)} KB.{url.length > 8000 ? ' Some chat and email apps cut off long links; if it does not open, send the .openplan file instead.' : ''}</p>}
-      {error && <p className="alert inline">Could not create the link: {error}</p>}
     </Modal>
   );
 }
@@ -289,7 +268,6 @@ export default function DialogHost() {
     case 'resource': return <ResourceDialog uid={dialog.props.uid} />;
     case 'about': return <AboutDialog />;
     case 'import': return <ImportDialog />;
-    case 'share': return <ShareDialog />;
     case 'confirm': return <ConfirmDialog {...dialog.props} />;
     default: return null;
   }

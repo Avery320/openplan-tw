@@ -52,13 +52,13 @@ function commitCell(k: string, uid: number, v: string): boolean | void {
   if (k === 'preds') return ops.setPreds(uid, v);
   if (k === 'duration') {
     const d = M.parseDuration(v, st.p.hoursPerDay);
-    if (d == null) { st.toast('Enter a duration like 5, 5d, 2w or 16h.', true); return false; }
+    if (d == null) { st.toast("請輸入工期，例如 5 天、2 週或 16 小時。", true); return false; }
     edit((t, p) => { ops.setDuration(p, t, d); });
     return;
   }
   if (k === 'work') {
     const hrs = parseFloat(v.replace(/[^\d.]/g, ''));
-    if (!isFinite(hrs)) { st.toast('Enter work in hours, e.g. 40.', true); return false; }
+    if (!isFinite(hrs)) { st.toast("請以小時為單位輸入工時，例如 40。", true); return false; }
     let err = '';
     edit((t, p) => { err = ops.setWork(p, t, hrs); if (err) return false; });
     if (err) { st.toast(err, true); return false; }
@@ -105,7 +105,7 @@ function Timeline({ st }: { st: Store }) {
   return (
     <div className="timeline">
       <div className="tl-inner">
-        <div className="tl-date start">Start<b>{U.fmtLong(s.startDn)}</b></div>
+        <div className="tl-date start">開始<b>{U.fmtLong(s.startDn)}</b></div>
         <div className="tl-track" style={extra ? { height: 58 + extra * 18 } : undefined}>
           {phases.map(({ r, lane, l, w }: any) => (
             <div key={r.task.uid} className={'tl-seg lane' + (lane < 3 ? lane : 2)} style={{ left: l + '%', width: w + '%', ...laneStyle(lane) }}
@@ -116,9 +116,9 @@ function Timeline({ st }: { st: Store }) {
           {s.rows.filter((r: Row) => r.milestone).map((r: Row) => (
             <div key={r.task.uid} className="tl-ms" style={{ left: pct(r.startDn + 1) + '%' }} title={r.task.name + ' — ' + U.fmt(r.startDn)} onClick={() => pick(r.task.uid)}><i /></div>
           ))}
-          {today >= s.startDn && today <= s.finishDn && <div className="tl-today" style={{ left: pct(today) + '%' }} title="Today" />}
+          {today >= s.startDn && today <= s.finishDn && <div className="tl-today" style={{ left: pct(today) + '%' }} title="今天" />}
         </div>
-        <div className="tl-date finish">Finish<b>{U.fmtLong(s.finishDn)}</b></div>
+        <div className="tl-date finish">完成<b>{U.fmtLong(s.finishDn)}</b></div>
       </div>
     </div>
   );
@@ -128,14 +128,14 @@ function Timeline({ st }: { st: Store }) {
 
 function Indicators({ st, r }: { st: Store; r: Row }) {
   const t = r.task, out: JSX.Element[] = [];
-  if (st.critical && r.critical && !r.summary) out.push(<span key="c" className="crit" title="On the critical path"><Icon name="flag" /></span>);
-  if (r.over) out.push(<span key="o" className="over" title="A resource on this task is overallocated"><Icon name="alert" /></span>);
+  if (st.critical && r.critical && !r.summary) out.push(<span key="c" className="crit" title="位於關鍵路徑"><Icon name="flag" /></span>);
+  if (r.over) out.push(<span key="o" className="over" title="這項任務的資源分配超出可用量"><Icon name="alert" /></span>);
   if (r.conflict) out.push(<span key="x" className="crit" title={r.conflict}><Icon name="alert" /></span>);
-  if (r.missedDeadline) out.push(<span key="d" className="crit" title="Finishes after its deadline"><Icon name="deadline" /></span>);
+  if (r.missedDeadline) out.push(<span key="d" className="crit" title="預計完成日期已超過期限"><Icon name="deadline" /></span>);
   if (!r.summary && t.constraint !== 'ASAP') out.push(<span key="p" title={M.CONSTRAINTS[t.constraint] + (t.constraintDate ? ' ' + U.fmt(U.parseDate(t.constraintDate)) : '')}><Icon name="pin" /></span>);
-  if (r.late && !r.summary) out.push(<span key="l" className="over" title="Behind schedule at the status date"><Icon name="clock" /></span>);
-  if (r.percent >= 100) out.push(<span key="k" className="done" title="Complete"><Icon name="check" /></span>);
-  if (t.levelDelay) out.push(<span key="v" title={'Delayed ' + U.num(t.levelDelay) + 'd by leveling'}><Icon name="balance" /></span>);
+  if (r.late && !r.summary) out.push(<span key="l" className="over" title="截至狀態日期的進度落後"><Icon name="clock" /></span>);
+  if (r.percent >= 100) out.push(<span key="k" className="done" title="完成"><Icon name="check" /></span>);
+  if (t.levelDelay) out.push(<span key="v" title={'因資源平衡延後 ' + U.num(t.levelDelay) + ' 天'}><Icon name="balance" /></span>);
   if (t.notes) out.push(<span key="n" title={t.notes}><Icon name="note" /></span>);
   return <td className="ind"><span className="ind-icons">{out}</span></td>;
 }
@@ -151,9 +151,9 @@ function Cell({ st, k, r, idx }: { st: Store; k: string; r: Row; idx: any }) {
       <td>
         <div className="namecell" style={{ paddingLeft: (lvl - 1) * 16 + 4 }}>
           {r.summary && st.group === 'none'
-            ? <button className="caret" aria-label="Expand or collapse" onClick={() => st.setUI({ collapsed: { ...st.collapsed, [uid]: !st.collapsed[uid] } })}><Icon name={st.collapsed[uid] ? 'chevR' : 'chevD'} /></button>
+            ? <button className="caret" aria-label="展開或收合" onClick={() => st.setUI({ collapsed: { ...st.collapsed, [uid]: !st.collapsed[uid] } })}><Icon name={st.collapsed[uid] ? 'chevR' : 'chevD'} /></button>
             : <span className="caret none" />}
-          <Field className="cell name" fk={uid + ':name'} value={t.name} placeholder="Task name" spellCheck={false} aria-label={'Task ' + r.id + ' name'}
+          <Field className="cell name" fk={uid + ':name'} value={t.name} placeholder="任務名稱" spellCheck={false} aria-label={'任務 ' + r.id + ' 名稱'}
             onFocus={focusSel} onCommit={v => commitCell('name', uid, v)} onNav={d => navFrom(uid, 'name', d)} />
         </div>
       </td>
@@ -161,21 +161,21 @@ function Cell({ st, k, r, idx }: { st: Store; k: string; r: Row; idx: any }) {
   }
   if (k === 'res') {
     return (
-      <td className="ro linkish" title={r.summary ? '' : 'Click to assign resources'}
+      <td className="ro linkish" title={r.summary ? '' : "點一下即可指派資源"}
         onClick={() => { st.select([uid], uid); st.setUI({ drawer: true }); focusKey('d:addres', false); }}>
-        {r.summary ? '' : r.names || (st.p.resources.length ? '+ assign' : '')}
+        {r.summary ? '' : r.names || (st.p.resources.length ? "＋ 指派" : '')}
       </td>
     );
   }
   if (k === 'preds') {
-    return <td><Field className="cell" fk={uid + ':preds'} value={M.formatPreds(st.p, t, idx)} spellCheck={false} aria-label={'Task ' + r.id + ' predecessors'}
+    return <td><Field className="cell" fk={uid + ':preds'} value={M.formatPreds(st.p, t, idx)} spellCheck={false} aria-label={'任務 ' + r.id + ' 的前置任務'}
       onFocus={focusSel} onCommit={v => commitCell('preds', uid, v)} onNav={d => navFrom(uid, 'preds', d)} /></td>;
   }
   const ro = !c.edit || (r.summary && c.sumRo);
   const fieldVal = c.field ? String((t as unknown as Record<string, unknown>)[c.field] ?? '') : '';
   const val = c.get ? c.get(r) : c.cf ? (t.custom[c.cf] == null ? '' : String(t.custom[c.cf])) : fieldVal;
   if (ro) return <td className={'ro' + (c.num ? ' num' : '')}>{val}</td>;
-  const fk = uid + ':' + k, label = 'Task ' + r.id + ' ' + c.t;
+  const fk = uid + ':' + k, label = '任務 ' + r.id + ' ' + c.t;
   if (c.edit === 'date') return <td><DateField className="cell" fk={fk} value={fieldVal} aria-label={label} onFocus={focusSel} onCommit={v => { commitCell(k, uid, v); }} /></td>;
   if (c.edit === 'select') {
     return <td><select className="cell" data-fk={fk} value={fieldVal} aria-label={label} onFocus={focusSel} onChange={e => commitCell(k, uid, e.target.value)}>
@@ -200,7 +200,7 @@ function Grid({ st, list }: { st: Store; list: (Row | GroupItem)[] }) {
               <tr key={item.key} className="grouprow"><td colSpan={ks.length}>
                 <div className="namecell">
                   <button className="caret" onClick={() => st.setUI({ collapsed: { ...st.collapsed, [item.key]: !st.collapsed[item.key] } })}><Icon name={st.collapsed[item.key] ? 'chevR' : 'chevD'} /></button>
-                  <b>{item.label}</b><span className="muted small">&nbsp;· {item.count} task{item.count === 1 ? '' : 's'} · {U.money(item.cost, st.p.currency)}</span>
+                  <b>{item.label}</b><span className="muted small">　· {item.count} 項任務 · {U.money(item.cost, st.p.currency)}</span>
                 </div>
               </td></tr>
             )
@@ -213,7 +213,7 @@ function Grid({ st, list }: { st: Store; list: (Row | GroupItem)[] }) {
             <tr className="newrow">
               <td className="id">{st.p.tasks.length + 1}</td><td />
               <td><div className="namecell" style={{ paddingLeft: 4 }}><span className="caret none" />
-                <Field className="cell" fk="new" value="" placeholder="Type a new task name and press Enter…" spellCheck={false}
+                <Field className="cell" fk="new" value="" placeholder="輸入任務名稱，按 Enter 新增…" spellCheck={false}
                   onCommit={v => { if (v.trim()) ops.addTaskNamed(v.trim()); return false; }} onNav={() => focusKey('new', false)} />
               </div></td>
               <td colSpan={Math.max(1, ks.length - 3)} />
@@ -221,8 +221,8 @@ function Grid({ st, list }: { st: Store; list: (Row | GroupItem)[] }) {
           )}
         </tbody>
       </table>
-      {!st.p.tasks.length && <div className="empty"><h3>No tasks yet</h3><div>Type a task name in the row above, or load the sample from File › New.</div></div>}
-      {!!st.p.tasks.length && !list.length && <div className="empty"><h3>No matching tasks</h3><div>Change the filter to see more tasks.</div></div>}
+      {!st.p.tasks.length && <div className="empty"><h3>目前沒有任務</h3><div>在上方輸入任務名稱，或從「檔案 › 新增」開啟範例。</div></div>}
+      {!!st.p.tasks.length && !list.length && <div className="empty"><h3>找不到符合條件的任務</h3><div>調整篩選條件即可顯示其他任務。</div></div>}
     </>
   );
 }
@@ -265,15 +265,15 @@ function dragMove(e: PointerEvent) {
     drag.ghost.style.display = 'none';
     drag.line.setAttribute('x1', pos.e); drag.line.setAttribute('y1', pos.y);
     drag.line.setAttribute('x2', e.clientX - drag.rect.left); drag.line.setAttribute('y2', e.clientY - drag.rect.top);
-    setTip(e, 'Link to…');
+    setTip(e, "連結至…");
   } else if (drag.mode === 'move') {
     const cal = S().s.cal;
     drag.ghost.setAttribute('x', pos.s + days * g.ppd);
-    setTip(e, 'Start ' + U.fmt(cal.date(cal.indexOf(drag.r.startDn + days))));
+    setTip(e, "開始 " + U.fmt(cal.date(cal.indexOf(drag.r.startDn + days))));
   } else {
     const cal = S().s.cal, nf = Math.max(drag.r.startDn, drag.r.finishDn + days);
     drag.ghost.setAttribute('width', Math.max(g.ppd, pos.e - pos.s + days * g.ppd));
-    setTip(e, 'Finish ' + U.fmt(Math.max(drag.r.startDn, cal.date(Math.max(0, cal.finishIndex(nf) - 1)))));
+    setTip(e, "完成 " + U.fmt(Math.max(drag.r.startDn, cal.date(Math.max(0, cal.finishIndex(nf) - 1)))));
   }
 }
 
@@ -286,7 +286,7 @@ function dragEnd(e: PointerEvent) {
   if (drag.mode === 'link') {
     const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.gbar') as SVGGElement | null;
     const tu = target ? +target.dataset.uid! : 0;
-    if (tu && ops.addLink(uid, tu)) st.toast('Linked ' + r.id + ' → ' + rowByUid(tu)!.id + ' (finish-to-start)');
+    if (tu && ops.addLink(uid, tu)) st.toast('已連結 ' + r.id + ' → ' + rowByUid(tu)!.id + '（完成後開始）');
   } else if (drag.mode === 'move') {
     if (!days) return;
     const ns = cal.date(cal.indexOf(r.startDn + days)), t0 = r.task;
@@ -294,25 +294,25 @@ function dragEnd(e: PointerEvent) {
     // Report when links keep the task from moving as far as it was dropped.
     const report = (msg: string) => {
       const after = rowByUid(uid);
-      st.toast(after && after.startDn > ns ? msg + '. Its predecessors keep it from starting before ' + U.fmt(after.startDn) + '.' : msg);
+      st.toast(after && after.startDn > ns ? msg + '。受前置任務限制，最早可開始日期為 ' + U.fmt(after.startDn) + '.' : msg);
     };
     if (t0.actualStart) {
       st.commit(p => { ops.findTask(p, uid).actualStart = U.iso(ns); });
-      report('Actual start moved to ' + U.fmt(ns));
+      report("實際開始日期已改為 " + U.fmt(ns));
     } else if (t0.constraint === 'MSO' || t0.constraint === 'MFO') {
       // Hard constraints move with the bar instead of being replaced.
       st.commit(p => {
         const t = ops.findTask(p, uid), cd = U.parseDate(t.constraintDate);
         t.constraintDate = t.constraint === 'MSO' || cd == null ? U.iso(ns) : U.iso(cal.date(Math.max(0, cal.indexOf(cd) + shift)));
       });
-      report(M.CONSTRAINTS[t0.constraint] + ' date moved');
+      report(M.CONSTRAINTS[t0.constraint] + '的日期已調整');
     } else {
       const apply = () => {
         S().commit(p => { const t = ops.findTask(p, uid); t.constraint = 'SNET'; t.constraintDate = U.iso(ns); });
-        report('Start no earlier than ' + U.fmt(ns));
+        report("最早開始日期為 " + U.fmt(ns));
       };
       if (t0.constraint === 'ASAP' || t0.constraint === 'SNET') apply();
-      else ask('Replace the “' + M.CONSTRAINTS[t0.constraint] + '” constraint with “Start no earlier than ' + U.fmt(ns) + '”?', apply, 'Replace');
+      else ask('要將「' + M.CONSTRAINTS[t0.constraint] + '」改為「開始不得早於 ' + U.fmt(ns) + '」嗎？', apply, "取代");
     }
   } else {
     if (!days) return;
@@ -397,27 +397,27 @@ export default function GanttView() {
   return (
     <div className="view gantt-view">
       {st.timeline && st.p.tasks.length > 0 && <Timeline st={st} />}
-      {st.s.cycle.length > 0 && <div className="alert"><Icon name="alert" />Dependency loop between tasks {st.s.cycle.join(', ')}. Remove one of the links to fix the schedule.</div>}
+      {st.s.cycle.length > 0 && <div className="alert"><Icon name="alert" />這些任務之間出現循環依賴：{st.s.cycle.join(', ')}。請移除其中一個連結。</div>}
       {conflicts > 0 && st.filter !== 'conflicts' && (
-        <div className="alert warn"><Icon name="alert" />{conflicts} task{conflicts > 1 ? 's have' : ' has'} a constraint that conflicts with its links.{' '}
-          <button className="linkbtn" onClick={() => st.setUI({ filter: 'conflicts' })}>Show them</button></div>
+        <div className="alert warn"><Icon name="alert" />{conflicts} 項任務的限制條件與依賴關係衝突。{' '}
+          <button className="linkbtn" onClick={() => st.setUI({ filter: 'conflicts' })}>顯示這些任務</button></div>
       )}
       {(st.filter !== 'all' || st.group !== 'none') && (
-        <div className="alert info"><Icon name="filter" />Showing: {md.filters[st.filter] || st.filter}{st.group !== 'none' ? ', grouped by ' + (md.groups[st.group] || st.group) : ''}{' '}
-          <button className="linkbtn" onClick={() => st.setUI({ filter: 'all', group: 'none' })}>Show all tasks</button></div>
+        <div className="alert info"><Icon name="filter" />篩選結果：{md.filters[st.filter] || st.filter}{st.group !== 'none' ? "，分組依據： " + (md.groups[st.group] || st.group) : ''}{' '}
+          <button className="linkbtn" onClick={() => st.setUI({ filter: 'all', group: 'none' })}>顯示所有任務</button></div>
       )}
       <div className="split" data-hide={hide}>
         <div className="grid-pane" ref={gridRef} style={{ width: st.gridW }} onScroll={e => sync(e.currentTarget, chartEl)}>
           <Grid st={st} list={list} />
         </div>
-        <div className="splitter" title="Drag to resize, or to either edge to hide a side" onPointerDown={startSplit}>
+        <div className="splitter" title="拖曳可調整寬度，移到任一側邊緣可隱藏該側" onPointerDown={startSplit}>
           <div className="split-btns" onPointerDown={e => e.stopPropagation()}>
             {hide !== 'table' && (
-              <button className="flip" title={hide === 'chart' ? 'Show the chart' : 'Hide the task table'} aria-label={hide === 'chart' ? 'Show the chart' : 'Hide the task table'}
+              <button className="flip" title={hide === 'chart' ? "顯示甘特圖" : "隱藏任務表"} aria-label={hide === 'chart' ? "顯示甘特圖" : "隱藏任務表"}
                 onClick={() => st.setUI({ ganttHide: hide === 'chart' ? 'none' : 'table' })}><Icon name="chevR" /></button>
             )}
             {hide !== 'chart' && (
-              <button title={hide === 'table' ? 'Show the task table' : 'Hide the chart'} aria-label={hide === 'table' ? 'Show the task table' : 'Hide the chart'}
+              <button title={hide === 'table' ? "顯示任務表" : "隱藏甘特圖"} aria-label={hide === 'table' ? "顯示任務表" : "隱藏甘特圖"}
                 onClick={() => st.setUI({ ganttHide: hide === 'table' ? 'none' : 'chart' })}><Icon name="chevR" /></button>
             )}
           </div>

@@ -8,8 +8,8 @@ const OP = {};
 /* ---------- utilities ---------- */
 
 OP.util = (function () {
-  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  var DAYS = ['日', '一', '二', '三', '四', '五', '六'];
   var fullYear = false;
   function setFullYear(on) { fullYear = !!on; }
 
@@ -27,22 +27,24 @@ OP.util = (function () {
     if (dn == null) return '';
     var d = toDate(dn);
     var y = String(d.getUTCFullYear());
-    return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + (fullYear ? y : y.slice(2));
+    return (fullYear ? y : y.slice(2)) + '/' + (d.getUTCMonth() + 1) + '/' + d.getUTCDate();
   }
   function fmtLong(dn) {
     if (dn == null) return '';
     var d = toDate(dn);
-    return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+    return d.getUTCFullYear() + '/' + (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '（' + DAYS[d.getUTCDay()] + '）';
   }
   function todayDn() {
-    var n = new Date();
-    return Math.round(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) / 864e5);
+    var date = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format();
+    return parseDate(date);
   }
   function money(v, cur) {
-    return (cur ? cur + ' ' : '') + Math.round(v || 0).toLocaleString();
+    return (cur ? cur + ' ' : '') + Math.round(v || 0).toLocaleString('zh-TW');
   }
   function num(v, dp) {
-    return (+v || 0).toLocaleString(undefined, { maximumFractionDigits: dp == null ? 1 : dp });
+    return (+v || 0).toLocaleString('zh-TW', { maximumFractionDigits: dp == null ? 1 : dp });
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -112,16 +114,16 @@ OP.model = (function () {
   var RES_TYPES = ['Manager', 'Full-time', 'Part-time', 'Supporter'];
   var RES_KINDS = ['Work', 'Material', 'Cost'];
   var CONSTRAINTS = {
-    ASAP: 'As soon as possible', ALAP: 'As late as possible', SNET: 'Start no earlier than', SNLT: 'Start no later than',
-    FNET: 'Finish no earlier than', FNLT: 'Finish no later than', MSO: 'Must start on', MFO: 'Must finish on'
+    ASAP: "儘早開始", ALAP: "儘晚開始", SNET: "開始不得早於", SNLT: "開始不得晚於",
+    FNET: "完成不得早於", FNLT: "完成不得晚於", MSO: "必須於指定日期開始", MFO: "必須於指定日期完成"
   };
-  var TASK_TYPES = { FixedUnits: 'Fixed units', FixedWork: 'Fixed work', FixedDuration: 'Fixed duration' };
+  var TASK_TYPES = { FixedUnits: "固定單位", FixedWork: "固定工時", FixedDuration: "固定工期" };
 
   function blank() {
     var t = OP.util.todayDn();
     return {
       version: 2,
-      name: 'Untitled project',
+      name: "未命名專案",
       organization: '',
       manager: '',
       status: 'Draft',
@@ -129,7 +131,7 @@ OP.model = (function () {
       start: OP.util.iso(t),
       statusDate: '',
       budget: 0,
-      currency: 'Rs.',
+      currency: 'NT$',
       hoursPerDay: 8,
       holidays: [],
       customFields: [],
@@ -292,15 +294,15 @@ OP.model = (function () {
 
   // "5", "5d", "2w", "16h" -> working days
   function parseDuration(text, hpd) {
-    var m = /^\s*(\d+(?:\.\d+)?)\s*(d|day|days|w|wk|wks|week|weeks|h|hr|hrs|hours?)?\s*$/i.exec(String(text));
+    var m = /^\s*([\d,]+(?:\.\d+)?)\s*(d|day|days|w|wk|wks|week|weeks|h|hr|hrs|hours?|天|日|週|小時)?\s*$/i.exec(String(text));
     if (!m) return null;
-    var v = +m[1], u = (m[2] || 'd').toLowerCase();
-    if (u[0] === 'w') v *= 5;
-    else if (u[0] === 'h') v /= (hpd || 8);
+    var v = Number(m[1].replace(/,/g, '')), u = (m[2] || 'd').toLowerCase();
+    if (u[0] === 'w' || u === '週') v *= 5;
+    else if (u[0] === 'h' || u === '小時') v /= (hpd || 8);
     return Math.round(v * 100) / 100;
   }
 
-  function fmtDuration(d) { return OP.util.num(d, 2) + 'd'; }
+  function fmtDuration(d) { return OP.util.num(d, 2) + ' 天'; }
 
   function removeTasks(p, uids) {
     var set = {};
@@ -464,7 +466,7 @@ OP.schedule = function (p, opts) {
       if (t.constraint === 'MSO' && (cd = startIdx(t.constraintDate)) != null) es = cd;
       if (t.constraint === 'MFO' && (cd = finishIdx(t.constraintDate)) != null) es = cd - sp;
     }
-    if (es < fromLinks - 1e-9) conflict[i] = 'The ' + M.CONSTRAINTS[t.constraint] + ' date is earlier than its predecessors allow';
+    if (es < fromLinks - 1e-9) conflict[i] = '「' + M.CONSTRAINTS[t.constraint] + '」的日期早於前置任務所允許的時間';
     es = Math.max(0, es) + (t.constraint === 'ALAP' ? 0 : +t.levelDelay || 0);
     if (t.actualStart && (cd = startIdx(t.actualStart)) != null) es = cd;
     ES[i] = es;
@@ -742,7 +744,7 @@ OP.level = function (p) {
   for (var pass = 0; pass < 4; pass++) {
     levelPass(p, moved, s2);
     s2 = OP.schedule(p);
-    left = p.resources.filter(function (res) { return s2.resStats[res.uid].over; }).map(function (res) { return res.name || '(unnamed)'; });
+    left = p.resources.filter(function (res) { return s2.resStats[res.uid].over; }).map(function (res) { return res.name || "（未命名）"; });
     if (!left.length) break;
   }
   return { moved: Object.keys(moved).length, unresolved: left };
